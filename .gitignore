@@ -1,7 +1,0 @@
-*.[oa]
-*.bak
-main
-main.exe
-.gitignore
-time.bat
-
