@@ -2,45 +2,44 @@
 
 /*Convert the string str to a bignum. It assumes str is only composed of numerals*/
 bignum bn_conv_str2bn(char *str) {
-	bignum num, x, temp;
-	uint32_t len = strlen(str);
+  bignum num, x, temp;
+  uint32_t len = strlen(str);
 
-	bn_copy(&num, ZERO);
-	if(len == 1 && str[0] == '-') {
-		return num;
-	}
-	
-	//Go through each digit in str
-	for(uint32_t i=len-1; i>0; i--) {
-		if(i == len-1 && str[0] == '-') {
-			continue;
-		}
-		
-		//Get the next digit, raise it to the correct power of 10, and add it to the result
-		x = bn_conv_byte2bn(str[len-i-1]-48);
-		for(uint32_t j=1; j<=i; j++) {
-			bn_mul_10(&x);
-		}
-		
-		bn_copy(&temp, num);
-		bn_destroy(&num);
-		num = bn_add(temp, x);
-		bn_destroy(&x);
-		bn_destroy(&temp);
-	}
+  bn_copy(&num, ZERO);
+  if(len == 1 && str[0] == '-') {
+    return num;
+  }
 
-	x = bn_conv_byte2bn(str[len-1]-48);
-	bn_copy(&temp, num);
-	bn_destroy(&num);
-	num=bn_add(temp,x);	
-	bn_destroy(&temp);
-	bn_destroy(&x);
-	
-	if(str[0] == '-') {
-		bn_minus_ptr(&num);
-	}
-	
-	return num;
+  //Go through each digit in str
+  for(uint32_t i=len-1; i>0; i--) {
+    if(i == len-1 && str[0] == '-') {
+      continue;
+    }
+
+    //Get the next digit, raise it to the correct power of 10, and add it to the result
+    x = bn_conv_byte2bn(str[len-i-1]-48);
+    for(uint32_t j=1; j<=i; j++) {
+      bn_mul_10(&x);
+    }
+
+    bn_copy(&temp, num);
+    bn_destroy(&num);
+    num = bn_add(temp, x);
+    bn_destroy(&x);
+    bn_destroy(&temp);
+  }
+
+  x = bn_conv_byte2bn(str[len-1]-48);
+  bn_copy(&temp, num);
+  bn_destroy(&num);
+  num=bn_add(temp,x);
+  bn_destroy(&temp);
+  bn_destroy(&x);
+
+  if(str[0] == '-') {
+    bn_minus_ptr(&num);
+  }
+  return num;
 }
 
 /*Convert the integer in to a 4 block bignum*/
