@@ -2,6 +2,36 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+int min(int a, int b) {
+  return a<b ? a : b;
+}
+int max(int a, int b) {
+  return a>b ? a : b;
+}
+
+typedef struct int_list_t int_list_t;
+
+struct int_list_t {
+  int val;
+  int_list_t* next;
+};
+
+int_list_t* push(int i, int_list_t* stack) {
+  int_list_t *newElement = malloc(sizeof(int_list_t));
+  newElement->val = i;
+  newElement->next = stack;
+  return newElement;
+}
+
+int pop(int_list_t** stack) {
+  if(stack) {
+    int retVal = (*stack)->val;
+    *stack = (*stack)->next;
+    return retVal;
+  }
+  return 0;
+}
+
 typedef struct tree_node_t tree_node_t;
 
 /* Binary sorted tree data structure for storing variables.
@@ -241,6 +271,12 @@ void save_variable(char* label, char* value) {
   } while(1);
 }
 
+/* Prints out all of the currently saved variables, and
+ * their values, so long as it is not too long, in order.
+ * ---------------------------------------------------------
+ * tree_node_t* node - A pointer to the root node below
+ *     which all vars are printed
+ */
 void show_vars(tree_node_t* node) {
   if(node) {
     show_vars(node->left);
@@ -253,6 +289,17 @@ void show_vars(tree_node_t* node) {
   }
 }
 
+/* Find the first node whose name has the given prefix.
+ * ---------------------------------------------------------
+ * const char* prefix - The prefix which the variable name
+ *     needs to start with.
+ * tree_node_t* root - The node at which to start searching
+ *     for the given prefix.
+ *
+ * return tree_node_t* - A pointer to the first node below
+ *     (or including) the root, whose label starts with the
+ *     given prefix.
+ */
 tree_node_t* find_prefix_node(const char* prefix,
                               tree_node_t* root) {
   tree_node_t* currentNode = root;
@@ -269,30 +316,304 @@ tree_node_t* find_prefix_node(const char* prefix,
   return currentNode;
 }
 
+/* Finds the total number of nodes in the tree with the
+ * given root.
+ * ---------------------------------------------------------
+ * const tree_node_t* root - The root of the tree.
+ *
+ * return int32_t - The number of nodes in the tree.
+ */
 int32_t tree_size(const tree_node_t* root) {
   if(!root) return 0;
   return 1+tree_size(root->left)+tree_size(root->right);
 }
 
-int32_t get_var_completion(const char* name,
-                           tree_node_t* root,
-                           char** completions) {
-  
+/* Gets the longest prefix of all of the strings in the
+ * array all.
+ * ---------------------------------------------------------
+ * char** strings - The array of strings from which to
+ *     extract the longest prefix.
+ * int32_t noStrings - The number of strings in the array.
+ *
+ * return char* - The longest prefix in common of all of the
+ *     strings.
+ */
+char* find_longest_prefix(char** strings,
+                          int32_t noStrings) {
+  //The longest prefix can be at most as long as any of the
+  //strings.
+  char* prefix = strdup(strings[0]);
+
+  for(int i=1; i<noStrings; i++) {
+    //If the new string is shorter than the current prefix,
+    //the longest prefix can be at most as long as the new
+    //string.
+    if(strlen(strings[i]) < strlen(prefix))
+      prefix[strlen(strings[i])] = '\0';
+
+    //Iterate through all of the characters in the prefix
+    //string (which is now no longer than the current string
+    for(int j=0; j<strlen(prefix); j++) {
+      //If we encounter a character which is different,
+      //we truncate the prefix string.
+      if(prefix[j]!=strings[i][j]) {
+        prefix[j] = '\0';
+        //If they differ in the first character, there is no
+        //common prefix.
+        if(strlen(prefix) == 0) return prefix;
+        break;
+      }
+    }
+  }
+  return prefix;
 }
 
-//TODO
+/* Gets all of the variables which have the given string as
+ * a prefix, which occur below the given root node. Applied
+ * recursively, starting with the root node, then applied to
+ * the left and right sub tree of any node which has the
+ * given prefix, until we reach the end of the tree.
+ * ---------------------------------------------------------
+ * const char* name - The prefix of the variable name to
+ *     search for.
+ * tree_node_t* root - The root of the tree, below which the
+ *     variables are searched for.
+ * char** completions - The string array in which the found
+ *     variable names are stored.
+ * int32_t index - The position in the array in which to
+ *     place the new found variables.
+ *
+ * return int32_t - The number of variables that were found
+ *     with the prefix and added to the string array.
+ */
+int32_t get_var_completion(const char* name,
+                           tree_node_t* root,
+                           char** completions,
+                           int32_t index) {
+  //Firstly find the first node below the root which has
+  //the given prefix (may be the root).
+  tree_node_t* prefixNode = find_prefix_node(name, root);
+  //If there is no node with the prefix, we won't add any
+  //more strings to the array.
+  if(!prefixNode) return 0;
+
+  //Add the current nodes label to the array.
+  int addedVars = 1;
+  completions[index] = strdup(prefixNode->label);
+
+  //Apply recursively to the left and right sub trees.
+  addedVars+=get_var_completion(name, prefixNode->left,
+                       completions, index+addedVars);
+  addedVars+=get_var_completion(name, prefixNode->right,
+                       completions, index+addedVars);
+
+  return addedVars;
+}
+
+/* Create an array of strings for use with tab completion
+ * from readline library. The string array is one of three
+ * types: NULL, if there are no possible completions;
+ *        A single command, followed by NULL, if there is
+ *          only one possible completion; or,
+ *        The longest common prefix of all of the possible
+ *          completions, followed by all of the possible
+ *          completions, followed by NULL.
+ * ---------------------------------------------------------
+ * const char* command - The command to try and complete.
+ * int start - The start index of the command to complete
+ *     in the input string.
+ * int end - The end index of the command to complete in the
+ *     the input string.
+ *
+ * return char** - An array of strings of the possible
+ *     completions of the given command.
+ */
 char** command_completion(const char* command,
                           int start,
                           int end) {
+  //Tell readline that we are done with command completion.
   rl_attempted_completion_over = 1;
+
+  //If the command to complete is a valid variable name,
+  //try to complete it as a variable name.
   if(is_valid_var_name(command)) {
+    //Find the first variable node in the tree which has
+    //the given command as prefix.
     tree_node_t* prefixRoot =
         find_prefix_node(command, rootPointer);
+    //If there are no such nodes, there are no possible
+    //completions.
     if(!prefixRoot)
       return NULL;
-    char** completions = malloc(tree_size(prefixRoot)+1);
-    get_var_completion(command, prefixRoot, completions);
+
+    //Otherwise, there are some possibilities, so get them.
+    char** completions = malloc(
+              sizeof(char*) * (tree_size(prefixRoot)+2));
+    int32_t addedVars = get_var_completion(
+                    command, prefixRoot, completions, 1);
+
+    //If there was precisely one possibility, return it.
+    if(addedVars == 1) {
+      completions[0] = strdup(completions[1]);
+      completions[1] = NULL;
+    }
+    //Otherwise, find the longest common prefix.
+    else {
+      completions[addedVars+1] = NULL;
+      completions[0] = find_longest_prefix(completions+1,
+                                             addedVars);
+    }
+    return completions;
   }
+}
+
+bignum do_operation(bignum left,
+                    bignum right,
+                    char operation) {
+  switch(operation) {
+    case '+': return bn_add(left, right);
+    case '-': return bn_subtract(left, right);
+    case '*': return bn_mul(left, right);
+    default: printf("Unkown operation\n");
+             bignum ret;
+             bn_copy(&ret, ZERO);
+             return ret;
+  }
+}
+
+
+bignum expand_expression(char* expression, char operation) {
+  char op[2];
+  op[0] = operation;
+  op[1] = '\0';
+  bignum result;
+
+  if(!strchr(expression, operation)) {
+    bn_copy(&result, ZERO);
+    return result;
+  }
+
+  size_t lhsLength = strcspn(expression, op);
+  size_t rhsLength = strlen(expression) - lhsLength-1;
+  if(lhsLength <= 0 || rhsLength <= 0) {
+    printf("Malformed expression\n");
+    bn_copy(&result, ZERO);
+    return result;
+  }
+  char* lhs = malloc(lhsLength+1);
+  char* rhs = malloc(rhsLength+1);
+  strncpy(lhs, expression, lhsLength);
+  lhs[lhsLength] = '\0';
+  strncpy(rhs, expression+lhsLength+1, rhsLength);
+  rhs[rhsLength] = '\0';
+
+  tree_node_t *right, *left;
+
+  //If the left and right are just numbers, or variables,
+  //we can do the operation.
+  if(isdigit_str(lhs) && isdigit_str(rhs)) {
+    bignum leftNum = bn_conv_str2bn(lhs);
+    bignum rightNum = bn_conv_str2bn(rhs);
+    result = do_operation(leftNum, rightNum, operation);
+    bn_destroy(&leftNum);
+    bn_destroy(&rightNum);
+    return result;
+  }
+  if(isdigit_str(lhs) && is_valid_var_name(rhs)) {
+    if(right = get_variable(rhs)) {
+      bignum leftNum = bn_conv_str2bn(lhs);
+      result = do_operation(leftNum, *(right->value),
+                                                 operation);
+      bn_destroy(&leftNum);
+      return result;
+    }
+    printf("Variable doesn't exist: %s\n", rhs);
+    bn_copy(&result, ZERO);
+    return result;
+  }
+  if(is_valid_var_name(lhs) && is_valid_var_name(rhs)) {
+    if((left = get_variable(lhs)) &&
+       (right = get_variable(rhs))) {
+      result = do_operation(*(left->value), *(right->value),
+                                                 operation);
+      return result;
+    }
+    if(!left) {
+      printf("Variable doesn't exist: %s\n", lhs);
+    }
+    if(!right) {
+      printf("Variable doesn't exist: %s\n", rhs);
+    }
+    bn_copy(&result, ZERO);
+    return result;
+  }
+  if(is_valid_var_name(lhs) && isdigit_str(rhs)) {
+    if(left = get_variable(lhs)) {
+      bignum rightNum = bn_conv_str2bn(rhs);
+      result = do_operation(*(left->value), rightNum,
+                                                 operation);
+      bn_destroy(&rightNum);
+      return result;
+    }
+    printf("Variable doesn't exist: %s\n", lhs);
+    bn_copy(&result, ZERO);
+    return result;
+  }
+
+  //Otherwise, we need to further expand either the left or
+  //right hand side.
+}
+
+void evaluate_expression(char* expression) {
+  char* str = expression;
+
+  if(strchr(str, '(') || strchr(str, ')')) {
+
+    int open = 0, numPairs = 0;
+    for(int i=0; i<strlen(expression); i++) {
+      if(str[i] == '(') {
+        open++;
+        numPairs++;
+      }
+      if(str[i] == ')') open--;
+      if(open<0)
+        break;
+    }
+    if(open!=0) {
+      printf("Parentheses mismatch\n");
+      return;
+    }
+
+    char** expressions = malloc(numPairs);
+    int_list_t* stack = NULL;
+    for(int i=0; i<strlen(expression); i++) {
+      if(str[i] == '(') stack = push(i, stack);
+      if(str[i] == ')') {
+        int j = pop(&stack);
+        char* newStr = malloc(i-j);
+        strncpy(newStr, expression+j+1, i-j-1);
+        newStr[i-j-1] = '\0';
+        printf("%s\n", newStr);
+      }
+    }
+    return;
+  }
+
+  bignum result1 = expand_expression(str, '^');
+  bignum result2 = expand_expression(str, '*');
+  bignum result3 = expand_expression(str, '/');
+  bignum result4 = expand_expression(str, '+');
+  bignum result5 = expand_expression(str, '-');
+  if(!bn_equals(result1, ZERO))
+    bn_prnt_dec(result1);
+  if(!bn_equals(result2, ZERO))
+    bn_prnt_dec(result2);
+  if(!bn_equals(result3, ZERO))
+    bn_prnt_dec(result3);
+  if(!bn_equals(result4, ZERO))
+    bn_prnt_dec(result4);
+  if(!bn_equals(result5, ZERO))
+    bn_prnt_dec(result5);
 }
 
 int main(int argc, char *argv[]){
@@ -352,16 +673,14 @@ int main(int argc, char *argv[]){
       tree_node_t* var = get_variable(input);
       //If the expression was indeed a variable, print
       //its value.
-      if(var!=NULL) {
+      if(var) {
         bn_prnt_dec(*(var->value));
         free(input);
         continue;
       }
 
-      printf("Trying to evaluate the expression\n");
-
       //TODO: deal with any other expression.
-      //evaluate_expression(input);
+      evaluate_expression(input);
 
       //Otherwise, it is not a valid command
       //printf("Command not found\n");
@@ -398,7 +717,7 @@ int main(int argc, char *argv[]){
       } else {
         //Otherwise, try to evaluate the expression, and
         //then save it in the variable TODO
-        //evaluate_expression(rhs);
+        evaluate_expression(rhs);
       }
 
       free(lhs);
