@@ -8,4 +8,4 @@ for F in src/*.c; do gcc -g -lm -Wall -fPIC -c -o bin/shared/$(basename "${F%.c}
 
 ar rcs bin/static/libbignum.a bin/static/*.o
 
-gcc main.o -g -Lbin/static -lbignum -lm -lpthread -o main
+gcc main.o -g -Lbin/static -lbignum -lm -lreadline -o main

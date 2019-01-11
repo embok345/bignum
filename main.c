@@ -84,8 +84,25 @@ int isdigit_str(const char* str) {
   return 1;
 }
 
+/* Check if a string is a valid variable name, that is, the
+ * first character is a lower case letter, and the remainder
+ * is alpha-numeric.
+ * ---------------------------------------------------------
+ * const char* str - The string to check if it is a valid
+ *     variable name.
+ *
+ * return int - 1 if the string is a valid variable name,
+ *     0 otherwise.
+ */
+int is_valid_var_name(const char* str) {
+  return (isalpha(*str) && islower(*str) &&
+          isalnum_str(str+1));
+}
+
 /* The root node for the variable tree */
 tree_node_t* rootPointer = NULL;
+
+int32_t noVars = 0;
 
 /* Create a new leaf node, with the specified label and
  * value.
@@ -124,9 +141,7 @@ void new_node(char* label,
 tree_node_t* get_variable(char* label) {
   //If the label is not a valid variable name, don't bother
   //looking for it.
-  if(!isalpha(*label) || !isalnum_str(label+1)) {
-    return NULL;
-  }
+  if(!is_valid_var_name(label)) return NULL;
   //Start at the root node.
   tree_node_t* currentNode = rootPointer;
   do {
@@ -157,11 +172,20 @@ tree_node_t* get_variable(char* label) {
  *     stored in the variable.
  */
 void save_variable(char* label, char* value) {
+
+  //If the variable name is not valid, don't dave it.
+  if(!is_valid_var_name(label)) {
+    printf("Invalid variable name: must be alphanumeric"
+           " and begin with a lower case letter.\n");
+    return;
+  }
+
   //If the tree is empty, just insert the new variable in
   //the root.
   if(rootPointer == NULL) {
     rootPointer = malloc(sizeof(tree_node_t));
     new_node(label, value, rootPointer);
+    noVars++;
     return;
   }
 
@@ -188,6 +212,7 @@ void save_variable(char* label, char* value) {
     }
     //Otherwise we go to either the left subtree...
     else if(comp<0) {
+      noVars++;
       //If the left subtree is empty, we insert the new
       //variable as a new leaf there.
       if(currentNode->left == NULL) {
@@ -203,6 +228,7 @@ void save_variable(char* label, char* value) {
     }
     //...or the right subtree, precisely similar as above.
     else {
+      noVars++;
       if(currentNode->right == NULL) {
         nextNode = malloc(sizeof(tree_node_t));
         new_node(label, value, nextNode);
@@ -215,67 +241,96 @@ void save_variable(char* label, char* value) {
   } while(1);
 }
 
-
-void evaluate_addition(char* lhs, char* rhs) {
-  bignum left, right;
-  if(isdigit_str(lhs)) {
-    left = bn_conv_str2bn(lhs);
-  } else {
-    tree_node_t* lvar = get_variable(lhs);
-    if(lvar==NULL) {
-      printf("Not a valid expression\n");
-      return;
-    }
-    left = *(lvar->value);
+void show_vars(tree_node_t* node) {
+  if(node) {
+    show_vars(node->left);
+    printf("%s = ", node->label);
+    if((node->value)->noBlocks < 100)
+      bn_prnt_dec(*(node->value));
+    else
+      printf("~256^%"PRIu32"\n", (node->value)->noBlocks);
+    show_vars(node->right);
   }
-  if(isdigit_str(rhs)) {
-    right = bn_conv_str2bn(rhs);
-  } else {
-    tree_node_t* rvar = get_variable(rhs);
-    if(rvar==NULL) {
-      printf("Not a valid expression\n");
-      return;
-    }
-    right = *(rvar->value);
-  }
-
-  bignum result = bn_add(left, right);
-  bn_prnt_dec(result);
-  bn_destroy(&result);
 }
 
-void evaluate_expression(char* expression) {
-  char* rhs = strstr(expression, "+");
-  rhs++;
-  char* lhs = malloc(strlen(expression)-strlen(rhs));
-  memcpy(lhs, expression, strlen(expression)-strlen(rhs)-1);
-  lhs[strlen(expression)-strlen(rhs)-1] = '\0';
-  //printf("%s, %s\n", lhs, rhs);
-  evaluate_addition(lhs, rhs);
+tree_node_t* find_prefix_node(const char* prefix,
+                              tree_node_t* root) {
+  tree_node_t* currentNode = root;
+  int len = strlen(prefix);
+  while(currentNode) {
+    int comp = strncmp(prefix, currentNode->label, len);
+    if(comp == 0)
+      return currentNode;
+    if(comp<0)
+      currentNode = currentNode->left;
+    else
+      currentNode = currentNode->right;
+  }
+  return currentNode;
+}
+
+int32_t tree_size(const tree_node_t* root) {
+  if(!root) return 0;
+  return 1+tree_size(root->left)+tree_size(root->right);
+}
+
+int32_t get_var_completion(const char* name,
+                           tree_node_t* root,
+                           char** completions) {
+  
+}
+
+//TODO
+char** command_completion(const char* command,
+                          int start,
+                          int end) {
+  rl_attempted_completion_over = 1;
+  if(is_valid_var_name(command)) {
+    tree_node_t* prefixRoot =
+        find_prefix_node(command, rootPointer);
+    if(!prefixRoot)
+      return NULL;
+    char** completions = malloc(tree_size(prefixRoot)+1);
+    get_var_completion(command, prefixRoot, completions);
+  }
 }
 
 int main(int argc, char *argv[]){
   srand(time(NULL));
+  rl_attempted_completion_function = command_completion;
 
   while(1) {
     //Continuously prompt for user input.
-    char *input;
+    char* input;
     input = readline("> ");
 
-    //Stop if the user requests a close
-    //TODO: we should free all of the variables as well.
-    if(strcmp(input, "quit")==0 ||
-       strcmp(input, "exit")==0 ||
-       strcmp(input, "q") == 0) {
+    //If the entry was empty, move on.
+    if(!input) {
       free(input);
-      exit(0);
+      continue;
     }
-
     //Strip the whitespace from user input. If the input
     //was only whitespace, then get some more input.
     remove_whitespace(input, input);
     if(strlen(input)==0) {
       free(input);
+      continue;
+    }
+
+    add_history(input);
+
+    //Stop if the user requests a close
+    //TODO: we should free all of the variables as well.
+    if(strcmp(input, "Quit")==0 ||
+       strcmp(input, "Exit")==0 ||
+       strcmp(input, "Q") == 0) {
+      free(input);
+      exit(0);
+    }
+
+    //Print out all of the saved variable names
+    if(strcmp(input, "Vars") == 0) {
+      show_vars(rootPointer);
       continue;
     }
 
@@ -303,8 +358,10 @@ int main(int argc, char *argv[]){
         continue;
       }
 
+      printf("Trying to evaluate the expression\n");
+
       //TODO: deal with any other expression.
-      evaluate_expression(input);
+      //evaluate_expression(input);
 
       //Otherwise, it is not a valid command
       //printf("Command not found\n");
@@ -326,9 +383,9 @@ int main(int argc, char *argv[]){
 
       //If the lhs is not of valid format for a variable,
       //just move on.
-      if(!isalpha(*lhs) || !isalnum_str(lhs+1)) {
+      if(!is_valid_var_name(lhs)) {
         printf("Invalid variable name: must be alphanumeric"
-               " and begin with a letter.\n");
+               " and begin with a lower case letter.\n");
         free(lhs);
         free(rhs);
         continue;
@@ -341,7 +398,7 @@ int main(int argc, char *argv[]){
       } else {
         //Otherwise, try to evaluate the expression, and
         //then save it in the variable TODO
-        evaluate_expression(rhs);
+        //evaluate_expression(rhs);
       }
 
       free(lhs);
