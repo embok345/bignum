@@ -1,5 +1,9 @@
 #include "bignum.h"
 
+void bn_subtract_2(bignum in1, bignum in2, bignum* out) {
+  return;
+}
+
 bignum bn_subtract(bignum in1, bignum in2) {
 	bignum out;
 	

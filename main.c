@@ -56,18 +56,22 @@ char** command_completion(const char* command,
   }
 }
 
-bignum do_operation(bignum left,
-                    bignum right,
-                    char operation) {
+void do_operation(bignum left,
+                  bignum right,
+                  char operation,
+                  bignum *result) {
+  bignum ret;
   switch(operation) {
-    case '+': return bn_add(left, right);
-    case '-': return bn_subtract(left, right);
-    case '*': return bn_mul(left, right);
-    default: printf("Unkown operation\n");
-             bignum ret;
-             bn_copy(&ret, ZERO);
-             return ret;
+    case '+': ret = bn_add(left, right);
+              break;
+    case '-': ret = bn_subtract(left, right);
+              break;
+    case '*': ret = bn_mul(left, right);
+              break;
+    default: printf("Unknown operation\n");
+             result = NULL;
   }
+  result = &ret;
 }
 
 
@@ -103,7 +107,7 @@ bignum expand_expression(char* expression, char operation) {
   if(isdigit_str(lhs) && isdigit_str(rhs)) {
     bignum leftNum = bn_conv_str2bn(lhs);
     bignum rightNum = bn_conv_str2bn(rhs);
-    result = do_operation(leftNum, rightNum, operation);
+    do_operation(leftNum, rightNum, operation, &result);
     bn_destroy(&leftNum);
     bn_destroy(&rightNum);
     return result;
@@ -111,7 +115,7 @@ bignum expand_expression(char* expression, char operation) {
   if(isdigit_str(lhs) && is_valid_var_name(rhs)) {
     if(right = get_variable(rhs, rootPointer)) {
       bignum leftNum = bn_conv_str2bn(lhs);
-      result = do_operation(leftNum, *(right->value), operation);
+      do_operation(leftNum, *(right->value), operation, &result);
       bn_destroy(&leftNum);
       return result;
     }
@@ -122,8 +126,7 @@ bignum expand_expression(char* expression, char operation) {
   if(is_valid_var_name(lhs) && is_valid_var_name(rhs)) {
     if((left = get_variable(lhs, rootPointer)) &&
        (right = get_variable(rhs, rootPointer))) {
-      result = do_operation(*(left->value), *(right->value),
-                                                 operation);
+      do_operation(*(left->value), *(right->value), operation, &result);
       return result;
     }
     if(!left) {
@@ -138,8 +141,7 @@ bignum expand_expression(char* expression, char operation) {
   if(is_valid_var_name(lhs) && isdigit_str(rhs)) {
     if(left = get_variable(lhs, rootPointer)) {
       bignum rightNum = bn_conv_str2bn(rhs);
-      result = do_operation(*(left->value), rightNum,
-                                                 operation);
+      do_operation(*(left->value), rightNum, operation, &result);
       bn_destroy(&rightNum);
       return result;
     }
@@ -207,6 +209,20 @@ void evaluate_expression(char* expression) {
 int main(int argc, char *argv[]){
   srand(time(NULL));
   rl_attempted_completion_function = command_completion;
+
+  //bignum num1 = bn_conv_str2bn("12345");
+  //bignum num2 = bn_conv_str2bn("67890");
+
+  bignum out;
+  bn_inits(&out);
+  bn_prnt_dec(out);
+  bn_init(&out,1);
+  bn_prnt_dec(out);
+  printf("%p\n", &out);
+  bn_copy(&out, out);
+  bn_prnt_dec(out);
+
+  return 0;
 
   while(1) {
     //Continuously prompt for user input.

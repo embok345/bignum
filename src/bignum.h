@@ -33,6 +33,7 @@ extern const bignum ONE;
 
 /*add.c*/
 bignum bn_add(bignum, bignum);
+void bn_add_2(bignum, bignum, bignum*);
 void bn_add_byte(bignum *, uint8_t);
 void bn_add_1(bignum *);
 
@@ -89,6 +90,7 @@ void bn_mul_2(bignum *);
 
 /*operations.c*/
 bignum bn_subtract(bignum, bignum);
+void bn_subtract_2(bignum, bignum, bignum*);
 void bn_sub_1(bignum *);
 bignum bn_minus_ret(bignum);
 void bn_minus_ptr(bignum *);
@@ -114,6 +116,7 @@ void bn_str_mul200(char *, char *);
 void bn_str_add(char *, char *, char *);
 
 /*structure.c*/
+void bn_inits(bignum *);
 void bn_init(bignum *, uint32_t);
 void bn_set(bignum *, uint32_t, uint8_t *, int8_t);
 void bn_rand(bignum *, uint32_t);
