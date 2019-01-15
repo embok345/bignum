@@ -39,13 +39,13 @@ void bn_add_1(bignum *);
 
 /*comparisons.c*/
 int8_t bn_compare(bignum, bignum);
-int8_t bn_compare_float(bn_float_t, bn_float_t);
-bignum bn_min(bignum, bignum);
-bignum bn_max(bignum, bignum);
+//int8_t bn_compare_float(bn_float_t, bn_float_t);
+//bignum bn_min(bignum, bignum);
+//bignum bn_max(bignum, bignum);
 int8_t bn_equals(bignum, bignum);
 int8_t bn_iseven(bignum);
 int8_t bn_isodd(bignum);
-int8_t bn_ispowerof2(bignum);
+//int8_t bn_ispowerof2(bignum);
 uint32_t bn_min_ui(uint32_t, uint32_t);
 uint32_t bn_max_ui(uint32_t, uint32_t);
 int64_t bn_min_sl(int64_t, int64_t);
@@ -77,16 +77,17 @@ bignum bn_factor_prho2(bignum);
 void *prhoThrd(void *);
 
 /*multiply.c*/
-bignum bn_mul(bignum, bignum);
+/*bignum bn_mul(bignum, bignum);
 bignum bn_pow_i(bignum, int32_t);
 bignum bn_powmod_bn(bignum, bignum, bignum);
 bignum bn_powmod_i(bignum, int32_t, bignum);
 bignum bn_mul_long(bignum[]);
 bignum bn_mul_karat(bignum[]);
 bignum bn_mul_tc3(bignum[]);
-bignum bn_mul_byte(bignum, uint8_t);
-void bn_mul_10(bignum *);
-void bn_mul_2(bignum *);
+bignum bn_mul_byte(bignum, uint8_t);*/
+void bn_mul_byte(bignum, uint8_t, bignum *);
+//void bn_mul_10(bignum *);
+//void bn_mul_2(bignum *);
 
 /*operations.c*/
 bignum bn_subtract(bignum, bignum);
@@ -116,8 +117,10 @@ void bn_str_mul200(char *, char *);
 void bn_str_add(char *, char *, char *);
 
 /*structure.c*/
-void bn_inits(bignum *);
-void bn_init(bignum *, uint32_t);
+void bn_inits(bignum *, uint32_t);
+void bn_init(bignum *);
+
+void bn_resize(bignum *, uint32_t);
 void bn_set(bignum *, uint32_t, uint8_t *, int8_t);
 void bn_rand(bignum *, uint32_t);
 void bn_copy(bignum *, bignum);
@@ -129,8 +132,8 @@ void bn_addblocks(bignum *, uint32_t);
 void bn_blockshift(bignum *, int32_t);
 void bn_bitshift(bignum *, int64_t);
 void bn_removezeros(bignum *);
-bignum bn_littleblocks(bignum, uint32_t);
-bignum bn_bigblocks(bignum, uint32_t);
+void bn_littleblocks(bignum, uint32_t, bignum*);
+void bn_bigblocks(bignum, uint32_t, bignum*);
 
 /*float.c*/
 void bn_float_init(bn_float_t *);

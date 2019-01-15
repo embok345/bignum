@@ -27,36 +27,55 @@ void bn_inits(bignum *num, uint32_t noBlocks) {
   num->sign = 0;
 }
 
-void bn_set(bignum *num, uint32_t noBlocks, uint8_t *blocks, int8_t sign) {
+void bn_resize(bignum *num, uint32_t noBlocks) {
+  if(num->noBlocks>=noBlocks) {
+    num->noBlocks = noBlocks;
+    return;
+  }
+
+  if(noBlocks == 0) {
+    bn_destroy(num);
+    return;
+  }
+
   if(!num->blocks) num->blocks = malloc(noBlocks);
-  else if(noBlocks>num->noBlocks) realloc(num->noBlocks, noBlocks);
+  else if(noBlocks>num->noBlocks) num->blocks = realloc(num->blocks, noBlocks);
+
+  for(uint32_t i=num->noBlocks; i<noBlocks; i++) {
+    num->blocks[i] = 0;
+  }
   num->noBlocks = noBlocks;
+}
+
+void bn_set(bignum *num, uint32_t noBlocks, uint8_t *blocks, int8_t sign) {
+  bn_resize(num, noBlocks);
   num->sign = sign;
   memcpy(num->blocks, blocks, noBlocks);
 }
 
 
 void bn_rand(bignum *num, uint32_t noBlocks) {
-  bn_init(num, noBlocks);
+  bn_resize(num, noBlocks);
   for(uint32_t i=0; i<num->noBlocks; i++) {
     num->blocks[i] = rand()%256;
   }
   bn_removezeros(num);
 }
 
-void bn_copy(bignum *new, bignum old) {
-  if(!old.blocks) return;
-  if(memcmp(new->blocks, old.blocks)) return;
-  if(new->blocks) free(new->blocks);
-  new->noBlocks = old.noBlocks;
-  new->blocks = (uint8_t*)malloc(new->noBlocks);
-  memcpy(new->blocks, old.blocks, new->noBlocks);
+void bn_clone(bignum *new, const bignum old) {
+  if(new->blocks == old.blocks) return;
+  if(!old.blocks) {
+    bn_destroy(new);
+    return;
+  }
+  bn_resize(new, old.noBlocks);
+  memcpy(new->blocks, old.blocks, old.noBlocks);
   new->sign = old.sign;
 }
 
-void bn_copy_float(bn_float_t *new, bn_float_t old) {
-  bn_copy(&(*new).n, old.n);
-  (*new).a = old.a;
+void bn_clone_float(bn_float_t *new, const bn_float_t old) {
+  bn_clone(&(new->n), old.n);
+  new->a = old.a;
 }
 
 void bn_destroy(bignum *num) {
@@ -66,49 +85,40 @@ void bn_destroy(bignum *num) {
 }
 
 void bn_destroy_float(bn_float_t *num) {
-  bn_destroy(&(*num).n);
-  (*num).a = 0;
+  bn_destroy(&num->n);
+  num->a = 0;
 }
 
 inline void bn_addblock(bignum *num) {
-  bn_addblocks(num, 1);
+  bn_resize(num, num->noBlocks+1);
 }
 
-void bn_addblocks(bignum *num, uint32_t noBlocks) {
-  num->noBlocks+=noBlocks;
-  num->blocks = (uint8_t*)realloc(num->blocks, num->noBlocks);
-  for(uint32_t i=num->noBlocks-1; i>=num->noBlocks-noBlocks; i--) {
-    num->blocks[i] = 0;
-  }
+inline void bn_addblocks(bignum *num, uint32_t noBlocks) {
+  bn_resize(num, num->noBlocks+noBlocks);
 }
 
 void bn_blockshift(bignum *num, int32_t amount) {
   if(amount == 0)
     return;
   if(amount<0) {
-    //if we shift more than the size of num, we are just removing all of the blocks
-    if(abs(amount)>=(*num).noBlocks) {
-      bn_destroy(num);
-      bn_copy(num, ZERO);
+    if(abs(amount) >= num->noBlocks) {
+      bn_clone(num, ZERO);
       return;
     }
-    //just get the top amount blocks
-    //amount <0, so subtracting
-    bignum new = bn_bigblocks((*num), (*num).noBlocks+amount);
-    bn_destroy(num);
-    bn_copy(num, new);
-    bn_destroy(&new);
+
+    num->noBlocks+=amount;
+    num->blocks = memmove(num->blocks, num->blocks-amount, num->noBlocks);
 
   } else {
-    //realloc the blocks, move the existing blocks up, and set the lower blocks to 0
-    (*num).blocks = realloc((*num).blocks, (*num).noBlocks+amount);
-    for(uint32_t i=(*num).noBlocks+amount-1; i>=amount; i--) {
-      (*num).blocks[i] = (*num).blocks[i-amount];
+    int32_t noBlocks = num->noBlocks;
+    bn_resize(num, num->noBlocks+amount);
+    //I want to belive there is a nicer way of doing this.
+    for(int32_t i=noBlocks-1; i>=0; i--) {
+      num->blocks[amount+i] = num->blocks[i];
     }
-    for(uint32_t i = 0; i<amount; i++) {
-      (*num).blocks[i] = 0;
+    for(int32_t i=0; i<amount; i++) {
+      num->blocks[i] = 0;
     }
-    (*num).noBlocks+=amount;
   }
 }
 
@@ -128,57 +138,66 @@ void bn_bitshift(bignum *num, int64_t amount) {
     bn_blockshift(num, blocks);
     int16_t bits = amount%8;
     for(int16_t i = 0; i<bits; i++) {
-      bn_mul_2(num);
+      bn_mul_byte(*num, 2, num);
     }
   }
 }
 
+//Note it doesn't actually realloc.
 void bn_removezeros(bignum *in) {
-  //if the top block isn't a zero there is nothing to do, and bignums can't have 0 blocks
-  if((*in).noBlocks == 1 || (*in).blocks[(*in).noBlocks-1]!=0 ) return;
-  uint32_t toRemove = 0;
-  //count how many zero blocks there are on top
-  for(uint32_t i = (*in).noBlocks-1; i>0; i--) {
-    if((*in).blocks[i]!=0) {
-      break;
-    }
-    toRemove++;
-  }
+  if(in->noBlocks == 1 || in->blocks[in->noBlocks-1] !=0 ) return;
 
-  //release the upper blocks
-  (*in).noBlocks-=toRemove;
-  (*in).blocks = realloc((*in).blocks, (*in).noBlocks);
+  while(in->blocks[in->noBlocks-1] == 0 && in->noBlocks>0) {
+    in->noBlocks--;
+  }
 }
 
-bignum bn_littleblocks(bignum num, uint32_t length) {
-  bignum out;
-  //The 'length' smallest blocks of a bignum of size < length are just the while thing
-  if(length>=num.noBlocks) {
-    bn_copy(&out, num);
-    return out;
-  }
-  //Copy the small blocks
-  bn_init(&out, length);
-  for(uint32_t i = 0; i<length; i++) {
-    out.blocks[i] = num.blocks[i];
-  }
-  out.sign = num.sign;
-  return out;
+
+void bn_littleblocks(const bignum num, uint32_t length, bignum *out) {
+  bn_clone(out, num);
+  if(length<num.noBlocks)
+    bn_resize(out, length);
 }
 
-bignum bn_bigblocks(bignum num, uint32_t length) {
-  bignum out;
-  //The length biggest blocks of a bignum with less than length blocks are just the whole thing
-  if(length>=num.noBlocks) {
-    bn_copy(&out, num);
-    return out;
-  }
+void bn_bigblocks(const bignum num, uint32_t length, bignum *out) {
+  bn_clone(out, num);
+  if(length<num.noBlocks)
+    bn_blockshift(out, num.noBlocks-length);
+}
 
-  //Copy the big blocks
-  bn_init(&out, length);
-  for(uint32_t i=0; i<length; i++) {
-    out.blocks[i] = num.blocks[num.noBlocks-length+i];
+void bn_prnt_test(bignum a) {
+  for(int i=0; i<a.noBlocks; i++) {
+    printf("%"PRIu8",", a.blocks[i]);
   }
-  out.sign = num.sign;
-  return out;
-}*/
+  printf("\n");
+}
+
+int main() {
+  srand(time(NULL));
+  bignum a;
+  bn_init(&a);
+  bn_rand(&a, 1);
+  bn_prnt_test(a);
+  bn_resize(&a, 20);
+  bn_prnt_test(a);
+
+  bn_removezeros(&a);
+  bn_prnt_test(a);
+
+  bn_blockshift(&a, 5);
+
+  bn_prnt_test(a);
+
+  bn_blockshift(&a, -7);
+
+  bn_prnt_test(a);
+
+  bn_mul_byte(a, 10, &a);
+
+  bn_prnt_test(a);
+
+  bn_destroy(&a);
+
+  printf("Done\n");
+  return 0;
+}

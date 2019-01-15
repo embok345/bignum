@@ -1,7 +1,7 @@
 #include "bignum.h"
 
 /*Divide in1 by in2, and return the pair (q, r), where q is the quotient and r is the remainder of the division*/
-divisionPair bn_div(bignum in1, bignum in2) {
+/*divisionPair bn_div(bignum in1, bignum in2) {
 
 	int8_t c;
 	uint8_t q;
@@ -98,21 +98,21 @@ divisionPair bn_div(bignum in1, bignum in2) {
 	//
 }
 
-/*Divide in1 by in2, and return the quotient of division; in1//in2 */
+/*Divide in1 by in2, and return the quotient of division; in1//in2 
 bignum bn_div_q(bignum in1, bignum in2) {
 	divisionPair dp = bn_div(in1, in2);
 	bn_destroy(&(dp.r));
 	return dp.q;
 }
 
-/*Divide in1 by in2, and return the remainder of the division; in1 % in2 */
+/*Divide in1 by in2, and return the remainder of the division; in1 % in2 
 bignum bn_div_r(bignum in1, bignum in2) {
 	divisionPair dp = bn_div(in1, in2);
 	bn_destroy(&(dp.q));
 	return dp.r;
 }
 
-/*Divide in1 by in2, when they differ by less than one block, returning the quotient, and storing the remainder in remainder */
+/*Divide in1 by in2, when they differ by less than one block, returning the quotient, and storing the remainder in remainder 
 uint8_t bn_div_close(bignum in1, bignum in2, bignum *remainder) {
 	
 	int8_t c = 0;
@@ -201,7 +201,7 @@ uint8_t bn_div_close(bignum in1, bignum in2, bignum *remainder) {
 	return q;
 }
 
-/*Divide the bignum in1 by the int in2, and return the qutoient*/
+/*Divide the bignum in1 by the int in2, and return the qutoient
 bignum bn_div_intq(bignum in1, uint32_t in2) {
 	if(in2 == 0) {
 		printf("%sbn//iDivision by 0!%s\n", RED, NORMAL);
@@ -262,7 +262,7 @@ bignum bn_div_intq(bignum in1, uint32_t in2) {
 	return out;
 }
 
-/*Divide the bignum in1 by the int in2, and return the remainder*/
+/*Divide the bignum in1 by the int in2, and return the remainder
 uint32_t bn_div_intr(bignum in1, uint32_t in2) {
 	
 	if(in2 == 0) {
@@ -309,7 +309,7 @@ uint32_t bn_div_intr(bignum in1, uint32_t in2) {
 	return out;
 }
 
-/*Divide the bignum in1 by the byte in2, and return the quotient*/
+/*Divide the bignum in1 by the byte in2, and return the quotient
 bignum bn_div_byteq(bignum in1, uint8_t in2) {
 	if(in2 == 0) {
 		printf("%sbn//bDivision by 0!%s\n", RED, NORMAL);
@@ -336,7 +336,7 @@ bignum bn_div_byteq(bignum in1, uint8_t in2) {
 	return out;
 }
 
-/*Divide the bignum in1 by the byte in2, and return the remainder*/
+/*Divide the bignum in1 by the byte in2, and return the remainder
 uint8_t bn_div_byter(bignum in1, uint8_t in2) {
 	uint8_t out;
 	uint16_t remainder = 0;
@@ -355,31 +355,31 @@ uint8_t bn_div_byter(bignum in1, uint8_t in2) {
 
 /*Divide num by 2, directly*/
 void bn_div_2(bignum *num) {
-	uint8_t remainder = 0;
-	uint16_t temp;
-	for(uint32_t i = 1; i<=(*num).noBlocks; i++) {
-		temp = (remainder<<7) + ((*num).blocks[(*num).noBlocks-i]>>1);
-		remainder = (*num).blocks[(*num).noBlocks-i]%2;
-		(*num).blocks[(*num).noBlocks-i] = temp%256;
-	}
-	bn_removezeros(num);
+  uint8_t remainder = 0;
+  uint16_t temp;
+  for(uint32_t i = 1; i<=num->noBlocks; i++) {
+    temp = (remainder<<7) + (num->blocks[num->noBlocks-i]>>1);
+    remainder = num->blocks[num->noBlocks-i]%2;
+    num->blocks[num->noBlocks-i] = temp%256;
+  }
+  bn_removezeros(num);
 }
 
 uint32_t bn_div_2s(bignum *num) {
-	uint32_t no2s = 0;
-	uint32_t noZeroBlocks = 0;
-	for(uint32_t i = 0; i<(*num).noBlocks; i++) {
-		if((*num).blocks[i] == 0) {
-			noZeroBlocks++;
-		} else {
-			break;
-		}
-	}
-	bn_blockshift(num, -noZeroBlocks);
-	no2s = noZeroBlocks*8;
-	while(bn_iseven((*num))) {
-			bn_div_2(num);
-			no2s++;
-	}
-	return no2s;
+  uint32_t no2s = 0;
+  uint32_t noZeroBlocks = 0;
+  for(uint32_t i = 0; i<(*num).noBlocks; i++) {
+    if((*num).blocks[i] == 0) {
+      noZeroBlocks++;
+    } else {
+      break;
+    }
+  }
+  bn_blockshift(num, -noZeroBlocks);
+  no2s = noZeroBlocks*8;
+  while(bn_iseven((*num))) {
+    bn_div_2(num);
+    no2s++;
+  }
+  return no2s;
 }

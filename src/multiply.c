@@ -1,7 +1,7 @@
 #include "bignum.h"
 
 
-bignum bn_mul(bignum in1, bignum in2) {
+/*bignum bn_mul(bignum in1, bignum in2) {
 // TODO:figure out which algorithms to use
 	bignum a, b;
 	bn_copy(&a, in1);
@@ -296,7 +296,7 @@ bignum bn_mul_karat(bignum in[]) {
 	printf("a = ");bn_prnt_dec(in[0]);printf("\n");
 	printf("b = ");bn_prnt_dec(in[1]);printf("\n");
 	printf("out = ");bn_prnt_dec(out);printf("\n");
-	printf("---------------------------------\n\n");*/
+	printf("---------------------------------\n\n");
 	
 	return out;
 }
@@ -479,48 +479,45 @@ bignum bn_mul_tc3(bignum in[]) {
 
 	return out;
 }
+*/
 
-bignum bn_mul_byte(bignum in1, uint8_t in2) {
-	bignum out;
-	uint16_t temp;
-	uint8_t remainder = 0;
-	bn_init(&out, in1.noBlocks + 1);
-	for(uint32_t i = 0; i<in1.noBlocks; i++) {
-		temp = (uint16_t)in1.blocks[i]*(uint16_t)in2 + remainder;
-		out.blocks[i] = temp%256;
-		remainder = temp/256;
-	}
-	if(remainder!=0) {
-		out.blocks[in1.noBlocks] = remainder;
-	}
-	
-	bn_removezeros(&out);
-	
-	return out;
+void bn_mul_byte(bignum in1, uint8_t in2, bignum *out) {
+  bn_resize(out, in1.noBlocks);
+  uint16_t temp;
+  uint8_t remainder = 0;
+  for(uint32_t i=0; i<in1.noBlocks; i++) {
+    temp = (uint16_t)in1.blocks[i]*(uint16_t)in2 + remainder;
+    out->blocks[i] = temp%256;
+    remainder = temp>>8;
+  }
+  if(remainder!=0) {
+    bn_addblock(out);
+    out->blocks[out->noBlocks-1] = remainder;
+  }
 }
 
 void bn_mul_10(bignum *num) {
-	uint8_t remainder = 0;
-	for(uint32_t i=0; i<(*num).noBlocks; i++) {
-		uint16_t temp = 10*((*num).blocks[i])+remainder;
-		(*num).blocks[i] = temp%256;
-		remainder = temp>>8;
-	}
-	if(remainder!=0) {
-		bn_addblock(num);
-		(*num).blocks[(*num).noBlocks-1] = remainder;
-	}
+  uint8_t remainder = 0;
+  for(uint32_t i=0; i<num->noBlocks; i++) {
+    uint16_t temp = 10*(num->blocks[i])+remainder;
+    num->blocks[i] = temp%256;
+    remainder = temp>>8;
+  }
+  if(remainder!=0) {
+    bn_addblock(num);
+    num->blocks[num->noBlocks-1] = remainder;
+  }
 }
 
 void bn_mul_2(bignum *num) {
-	uint8_t remainder = 0;
-	for(uint32_t i=0; i<(*num).noBlocks; i++) {
-		uint16_t temp = (((uint16_t)((*num).blocks[i]))<<1) + remainder;
-		(*num).blocks[i] = temp%256;
-		remainder = temp>>8;
-	}
-	if(remainder!=0) {
-		bn_addblock(num);
-		(*num).blocks[(*num).noBlocks-1] = remainder;
-	}
-}		
+  uint8_t remainder = 0;
+  for(uint32_t i=0; i<(*num).noBlocks; i++) {
+    uint16_t temp = (((uint16_t)((*num).blocks[i]))<<1) + remainder;
+    (*num).blocks[i] = temp%256;
+    remainder = temp>>8;
+  }
+  if(remainder!=0) {
+    bn_addblock(num);
+    num->blocks[(*num).noBlocks-1] = remainder;
+  }
+}
