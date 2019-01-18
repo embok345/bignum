@@ -1,156 +1,65 @@
 #include "bignum.h"
 
-/*Add the numbers in1 and in2, and return it*/
-bignum bn_add(bignum in1, bignum in2) {
-
-  bignum a, b, num;
+void bn_add(const bignum *in1, const bignum *in2, bignum *out) {
 
   int8_t c = 0;
   uint8_t longer = 0, remainder = 0;
   uint16_t temp = 0;
   uint32_t addLength = 0, numLength = 0;
 
-  bn_copy(&a, in1);
-  bn_copy(&b, in2);
-
-  //If the signs aren't the same, we are really subtracting one from the other
-  if(a.sign != b.sign) {
-    if(in1.sign == 1) { //if the first is +ve, we are doing a-b
-      bn_minus_ptr(&b);
-      num = bn_subtract(a,b);
-    } else { //if the first is -ve, we are doing b-a
-      bn_minus_ptr(&a);
-      num = bn_subtract(b, a);
-    }
-    bn_destroy(&a);
-    bn_destroy(&b);
+  if(bn_ispositive(in1) && bn_isnegative(in2)) {
+    bn_subtract(in1, in2, out);
+    return;
+  }
+  if(bn_isnegative(in1) && bn_ispositive(in2)) {
+    bn_subtract(in2, in1, out);
+    bn_signSwap(out);
+    return;
   }
 
-  c = bn_compare(a, b);
+  if(bn_isempty(in1)) {
+    bn_clone(out, in2);
+    return;
+  }
+  if(bn_isempty(in2)) {
+    bn_clone(out, in1);
+    return;
+  }
 
-  // if a>b, we add b.noBlocks together, and a+b is a.noBlocks long
-  if(c==1) {
+  uint32_t len1 = bn_trueLength(in1);
+  uint32_t len2 = bn_trueLength(in2);
+
+  if(len1>len2) {
+    bn_resize(out, len1);
+    addLength = len2;
+    numLength = len1;
     longer = 1;
-    addLength = b.noBlocks;
-    numLength = a.noBlocks;
-  }
-  //if a<b, we add a.noBlocks together, and a+b is b.noBlocks long
-  else if(c==-1) {
-    longer = 2;
-    addLength = a.noBlocks;
-    numLength = b.noBlocks;
   } else {
-    addLength = a.noBlocks;
-    numLength = a.noBlocks;
+    bn_resize(out, len2);
+    addLength = len1;
+    numLength = len2;
+    longer = 2;
   }
-
-  bn_init(&num, numLength);
 
   //Add the first addLength blocks from a and b, taking care of overflows
   for(uint32_t i = 0; i<addLength; i++) {
-    temp = (uint16_t)a.blocks[i] + (uint16_t)b.blocks[i] + (uint16_t)remainder;
-    num.blocks[i] = (uint8_t)(temp%256);
+    temp = (uint16_t)bn_getBlock(in1, i) + (uint16_t)bn_getBlock(in2, i) +
+        (uint16_t)remainder;
+    bn_setBlock(out, i, (uint8_t)(temp%256));
     remainder = temp>>8;
   }
 
   //Copy the final blocks from a or b, with overflow from previous addition
   if(longer == 1) {
     for(uint32_t i=addLength; i<numLength; i++) {
-      temp = (uint16_t)a.blocks[i] + (uint16_t)remainder;
-      num.blocks[i] = (uint8_t)(temp%256);
+      temp = (uint16_t)bn_getBlock(in1, i) + (uint16_t)remainder;
+      bn_setBlock(out, i, (uint8_t)(temp%256));
       remainder = temp>>8;
     }
   } else if(longer == 2) {
     for(uint32_t i=addLength; i<numLength; i++) {
-      temp = (uint16_t)b.blocks[i] + (uint16_t)remainder;
-      num.blocks[i] = (uint8_t)(temp%256);
-      remainder = temp>>8;
-    }
-  }
-
-  //If there is still overflow, put it in to a new block at the end
-  if(remainder > 0) {
-    bn_addblock(&num);
-    num.blocks[num.noBlocks-1] = remainder;
-  }
-
-  if(a.sign==-1) { //If a is -ve, both a and b are -ve, so a+b is -ve
-    bn_minus_ptr(&num);
-  }
-
-  bn_removezeros(&num);
-
-  bn_destroy(&a);
-  bn_destroy(&b);
-  return num;
-}
-
-void bn_add_2(bignum in1, bignum in2, bignum *out) {
-
-  bignum a, b;
-
-  int8_t c = 0;
-  uint8_t longer = 0, remainder = 0;
-  uint16_t temp = 0;
-  uint32_t addLength = 0, numLength = 0;
-
-  bn_inits(&a);
-  bn_inits(&b);
-
-  bn_copy(&a, in1);
-  bn_copy(&b, in2);
-
-  //If the signs aren't the same, we are really subtracting one from the other
-  if(a.sign != b.sign) {
-    if(in1.sign == 1) { //if the first is +ve, we are doing a-b
-      bn_minus_ptr(&b);
-      bn_subtract_2(a,b, out);
-    } else { //if the first is -ve, we are doing b-a
-      bn_minus_ptr(&a);
-      bn_subtract_2(b, a, out);
-    }
-    bn_destroy(&a);
-    bn_destroy(&b);
-  }
-
-  c = bn_compare(a, b);
-
-  // if a>b, we add b.noBlocks together, and a+b is a.noBlocks long
-  if(c==1) {
-    longer = 1;
-    addLength = b.noBlocks;
-    numLength = a.noBlocks;
-  }
-  //if a<b, we add a.noBlocks together, and a+b is b.noBlocks long
-  else if(c==-1) {
-    longer = 2;
-    addLength = a.noBlocks;
-    numLength = b.noBlocks;
-  } else {
-    addLength = a.noBlocks;
-    numLength = a.noBlocks;
-  }
-
-  bn_init(out, numLength);
-
-  //Add the first addLength blocks from a and b, taking care of overflows
-  for(uint32_t i = 0; i<addLength; i++) {
-    temp = (uint16_t)a.blocks[i] + (uint16_t)b.blocks[i] + (uint16_t)remainder;
-    out->blocks[i] = (uint8_t)(temp%256);
-    remainder = temp>>8;
-  }
-
-  //Copy the final blocks from a or b, with overflow from previous addition
-  if(longer == 1) {
-    for(uint32_t i=addLength; i<numLength; i++) {
-      temp = (uint16_t)a.blocks[i] + (uint16_t)remainder;
-      out->blocks[i] = (uint8_t)(temp%256);
-      remainder = temp>>8;
-    }
-  } else if(longer == 2) {
-    for(uint32_t i=addLength; i<numLength; i++) {
-      temp = (uint16_t)b.blocks[i] + (uint16_t)remainder;
-      out->blocks[i] = (uint8_t)(temp%256);
+      temp = (uint16_t)bn_getBlock(in2, i) + (uint16_t)remainder;
+      bn_setBlock(out, i, (uint8_t)(temp%256));
       remainder = temp>>8;
     }
   }
@@ -158,47 +67,60 @@ void bn_add_2(bignum in1, bignum in2, bignum *out) {
   //If there is still overflow, put it in to a new block at the end
   if(remainder > 0) {
     bn_addblock(out);
-    out->blocks[out->noBlocks-1] = remainder;
+    bn_setBlock(out, numLength, remainder);
   }
 
-  if(a.sign==-1) { //If a is -ve, both a and b are -ve, so a+b is -ve
-    bn_minus_ptr(out);
+  if(bn_ispositive(in1) && bn_ispositive(in2)) {
+    bn_setpositive(out);
+  } else {
+    bn_setnegative(out);
   }
 
   bn_removezeros(out);
-
-  bn_destroy(&a);
-  bn_destroy(&b);
 }
 
-/*Add a single byte in2 to the final byte of in1*/
-void bn_add_byte(bignum *in1, uint8_t in2) {
-	
-	uint8_t remainder = 0;
-	uint16_t temp = 0;
-	uint32_t j = 1;
-	
-	//Add in2 to the final block of in1, taking care of overflow
-	temp = (*in1).blocks[0] + in2;
-	(*in1).blocks[0] = temp%256;
-	remainder = temp>>8;
-	
-	//If we have overflow, go through the blocks until we don't
-	while(remainder>0) {
-		//If we have reached the end of in1, add a new block, and put the overflow into it
-		if(j>=(*in1).noBlocks) {
-			bn_addblock(in1);
-			(*in1).blocks[(*in1).noBlocks-1] = remainder;
-			break;
-		}
-		temp = (*in1).blocks[j]+remainder;
-		(*in1).blocks[j] = temp%256;
-		remainder = temp>>8;
-		j++;
-	}
+void bn_add_byte(const bignum *in1, uint8_t in2, bignum *out) {
+  uint8_t remainder = 0;
+  uint16_t temp = 0;
+  uint32_t j = 1;
+
+  if(bn_isempty(in1)) {
+    bn_resize(out, 1);
+    bn_setBlock(out, 0, in2);
+    return;
+  }
+
+  if(in2 == 0) {
+    bn_clone(out, in1);
+    return;
+  }
+
+  uint32_t len = bn_length(in1);
+
+  bn_clone(out, in1);
+
+  //Add in2 to the final block of in1, taking care of overflow
+  temp = bn_getBlock(in1, 0) + in2;
+  bn_setBlock(out, 0, temp%256);
+  remainder = temp>>8;
+
+  //If we have overflow, go through the blocks until we don't
+  while(remainder>0) {
+    //If we have reached the end of in1, add a new block, and put the overflow into it
+    if(j>=len) {
+      bn_addblock(out);
+      bn_setBlock(out, len, remainder);
+    }
+    temp = bn_getBlock(in1, j) + remainder;
+    bn_setBlock(out, j, temp%256);
+    remainder = temp>>8;
+    j++;
+  }
+
+  bn_removezeros(out);
 }
 
 /*Increment num; num++*/
 void bn_add_1(bignum *num) {
-	bn_add_byte(num, 1);
+  bn_add_byte(num, 1, num);
 }
