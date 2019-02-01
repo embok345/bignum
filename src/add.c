@@ -1,28 +1,37 @@
 #include "bignum.h"
 
 void bn_add(const bignum *in1, const bignum *in2, bignum *out) {
+  if(bn_ispositive(in1) && bn_isnegative(in2)) {
+    bn_subtract_abs(in1, in2, out);
+    return;
+  }
+  if(bn_isnegative(in1) && bn_ispositive(in2)) {
+    bn_subtract_abs(in2, in1, out);
+    return;
+  }
+  if(bn_isnegative(in1) && bn_isnegative(in2)) {
+    bn_add_abs(in1, in2, out);
+    bn_setnegative(out);
+    return;
+  }
+  bn_add_abs(in1, in2, out);
+}
 
-  int8_t c = 0;
+//Just does |in1|+|in2|, so is always positive
+void bn_add_abs(const bignum *in1, const bignum *in2, bignum *out) {
+
   uint8_t longer = 0, remainder = 0;
   uint16_t temp = 0;
   uint32_t addLength = 0, numLength = 0;
 
-  if(bn_ispositive(in1) && bn_isnegative(in2)) {
-    bn_subtract(in1, in2, out);
-    return;
-  }
-  if(bn_isnegative(in1) && bn_ispositive(in2)) {
-    bn_subtract(in2, in1, out);
-    bn_signSwap(out);
-    return;
-  }
-
   if(bn_isempty(in1)) {
     bn_clone(out, in2);
+    bn_setpositive(out);
     return;
   }
   if(bn_isempty(in2)) {
     bn_clone(out, in1);
+    bn_setpositive(out);
     return;
   }
 
@@ -70,12 +79,7 @@ void bn_add(const bignum *in1, const bignum *in2, bignum *out) {
     bn_setBlock(out, numLength, remainder);
   }
 
-  if(bn_ispositive(in1) && bn_ispositive(in2)) {
-    bn_setpositive(out);
-  } else {
-    bn_setnegative(out);
-  }
-
+  bn_setpositive(out);
   bn_removezeros(out);
 }
 

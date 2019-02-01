@@ -56,42 +56,39 @@ char** command_completion(const char* command,
   }
 }
 
-void do_operation(bignum left,
-                  bignum right,
+void do_operation(const bignum *left,
+                  const bignum *right,
                   char operation,
                   bignum *result) {
-  bignum ret;
   switch(operation) {
-    case '+': ret = bn_add(left, right);
+    case '+': bn_add(left, right, result);
               break;
-    case '-': ret = bn_subtract(left, right);
+    case '-': bn_subtract(left, right, result);
               break;
-    case '*': ret = bn_mul(left, right);
+    case '*': bn_mul(left, right, result);
               break;
     default: printf("Unknown operation\n");
              result = NULL;
   }
-  result = &ret;
 }
 
 
-bignum expand_expression(char* expression, char operation) {
+void expand_expression(char* expression, char operation, bignum *result) {
   char op[2];
   op[0] = operation;
   op[1] = '\0';
-  bignum result;
 
   if(!strchr(expression, operation)) {
-    bn_copy(&result, ZERO);
-    return result;
+    bn_clone(result, &ZERO);
+    return;
   }
 
   size_t lhsLength = strcspn(expression, op);
   size_t rhsLength = strlen(expression) - lhsLength-1;
   if(lhsLength <= 0 || rhsLength <= 0) {
     printf("Malformed expression\n");
-    bn_copy(&result, ZERO);
-    return result;
+    bn_clone(result, &ZERO);
+    return;
   }
   char* lhs = malloc(lhsLength+1);
   char* rhs = malloc(rhsLength+1);
@@ -105,29 +102,34 @@ bignum expand_expression(char* expression, char operation) {
   //If the left and right are just numbers, or variables,
   //we can do the operation.
   if(isdigit_str(lhs) && isdigit_str(rhs)) {
-    bignum leftNum = bn_conv_str2bn(lhs);
-    bignum rightNum = bn_conv_str2bn(rhs);
-    do_operation(leftNum, rightNum, operation, &result);
-    bn_destroy(&leftNum);
-    bn_destroy(&rightNum);
-    return result;
+    bignum *leftNum, *rightNum;
+    bn_init(&leftNum);
+    bn_init(&rightNum);
+    bn_conv_str2bn(lhs, leftNum);
+    bn_conv_str2bn(rhs, rightNum);
+    do_operation(leftNum, rightNum, operation, result);
+    bn_nuke(&leftNum);
+    bn_nuke(&rightNum);
+    return;
   }
   if(isdigit_str(lhs) && is_valid_var_name(rhs)) {
     if(right = get_variable(rhs, rootPointer)) {
-      bignum leftNum = bn_conv_str2bn(lhs);
-      do_operation(leftNum, *(right->value), operation, &result);
-      bn_destroy(&leftNum);
-      return result;
+      bignum *leftNum;
+      bn_init(&leftNum);
+      bn_conv_str2bn(lhs, leftNum);
+      do_operation(leftNum, right->value, operation, result);
+      bn_nuke(&leftNum);
+      return;
     }
     printf("Variable doesn't exist: %s\n", rhs);
-    bn_copy(&result, ZERO);
-    return result;
+    bn_clone(result, &ZERO);
+    return;
   }
   if(is_valid_var_name(lhs) && is_valid_var_name(rhs)) {
     if((left = get_variable(lhs, rootPointer)) &&
        (right = get_variable(rhs, rootPointer))) {
-      do_operation(*(left->value), *(right->value), operation, &result);
-      return result;
+      do_operation(left->value, right->value, operation, result);
+      return;
     }
     if(!left) {
       printf("Variable doesn't exist: %s\n", lhs);
@@ -135,27 +137,35 @@ bignum expand_expression(char* expression, char operation) {
     if(!right) {
       printf("Variable doesn't exist: %s\n", rhs);
     }
-    bn_copy(&result, ZERO);
-    return result;
+    bn_clone(result, &ZERO);
+    return;
   }
   if(is_valid_var_name(lhs) && isdigit_str(rhs)) {
     if(left = get_variable(lhs, rootPointer)) {
-      bignum rightNum = bn_conv_str2bn(rhs);
-      do_operation(*(left->value), rightNum, operation, &result);
-      bn_destroy(&rightNum);
-      return result;
+      bignum *rightNum;
+      bn_init(&rightNum);
+      bn_conv_str2bn(rhs, rightNum);
+      do_operation(left->value, rightNum, operation, result);
+      bn_nuke(&rightNum);
+      return;
     }
     printf("Variable doesn't exist: %s\n", lhs);
-    bn_copy(&result, ZERO);
-    return result;
+    bn_clone(result, &ZERO);
+    return;
   }
 
   //Otherwise, we need to further expand either the left or
   //right hand side.
 }
 
-void evaluate_expression(char* expression) {
+void evaluate_expression(char* expression, bignum *result) {
   char* str = expression;
+
+  tree_node_t* var = get_variable(expression, rootPointer);
+  if(var) {
+    bn_clone(result, var->value);
+    return;
+  }
 
   if(strchr(str, '(') || strchr(str, ')')) {
 
@@ -188,41 +198,21 @@ void evaluate_expression(char* expression) {
     }
     return;
   }
-
-  bignum result1 = expand_expression(str, '^');
-  bignum result2 = expand_expression(str, '*');
-  bignum result3 = expand_expression(str, '/');
-  bignum result4 = expand_expression(str, '+');
-  bignum result5 = expand_expression(str, '-');
-  if(!bn_equals(result1, ZERO))
-    bn_prnt_dec(result1);
-  if(!bn_equals(result2, ZERO))
-    bn_prnt_dec(result2);
-  if(!bn_equals(result3, ZERO))
-    bn_prnt_dec(result3);
-  if(!bn_equals(result4, ZERO))
-    bn_prnt_dec(result4);
-  if(!bn_equals(result5, ZERO))
-    bn_prnt_dec(result5);
+  if(strchr(str, '^'))
+    expand_expression(str, '^', result);
+  else if(strchr(str, '*'))
+    expand_expression(str, '*', result);
+  else if(strchr(str, '/'))
+    expand_expression(str, '/', result);
+  else if(strchr(str, '+'))
+    expand_expression(str, '+', result);
+  else if(strchr(str, '-'))
+    expand_expression(str, '-', result);
 }
 
 int main(int argc, char *argv[]){
   srand(time(NULL));
   rl_attempted_completion_function = command_completion;
-
-  //bignum num1 = bn_conv_str2bn("12345");
-  //bignum num2 = bn_conv_str2bn("67890");
-
-  bignum out;
-  bn_inits(&out);
-  bn_prnt_dec(out);
-  bn_init(&out,1);
-  bn_prnt_dec(out);
-  printf("%p\n", &out);
-  bn_copy(&out, out);
-  bn_prnt_dec(out);
-
-  return 0;
 
   while(1) {
     //Continuously prompt for user input.
@@ -278,13 +268,17 @@ int main(int argc, char *argv[]){
       //If the expression was indeed a variable, print
       //its value.
       if(var) {
-        bn_prnt_dec(*(var->value));
+        bn_prnt_dec(var->value);
         free(input);
         continue;
       }
 
       //TODO: deal with any other expression.
-      evaluate_expression(input);
+      bignum *result;
+      bn_init(&result);
+      evaluate_expression(input, result);
+      bn_prnt_dec(result);
+      bn_nuke(&result);
 
       //Otherwise, it is not a valid command
       //printf("Command not found\n");
@@ -321,7 +315,11 @@ int main(int argc, char *argv[]){
       } else {
         //Otherwise, try to evaluate the expression, and
         //then save it in the variable TODO
-        evaluate_expression(rhs);
+        tree_node_t *var = get_variable(lhs, rootPointer);
+        if(!var) {
+          var = save_variable(lhs, "0", &rootPointer);
+        }
+        evaluate_expression(rhs, var->value);
       }
 
       free(lhs);

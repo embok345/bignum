@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <time.h>
 #include <stdarg.h>
@@ -34,7 +35,7 @@ void bn_bigblocks(const bignum *, uint32_t, bignum*);
 uint32_t bn_length(const bignum *);
 uint32_t bn_trueLength(const bignum *);
 uint8_t bn_getBlock(const bignum *, uint32_t);
-int8_t bn_setBlock(bignum *, uint32_t, uint8_t);
+void bn_setBlock(bignum *, uint32_t, uint8_t);
 int8_t bn_ispositive(const bignum *);
 int8_t bn_isnegative(const bignum *);
 void bn_setpositive(bignum *);
@@ -43,6 +44,9 @@ void bn_signSwap(bignum *);
 
 /*multiply.c*/
 void bn_mul_byte(const bignum *, uint8_t, bignum *);
+//void bn_mul_long(const bignum *, const bignum *, bignum *);
+//void bn_mul_karat(const bignum *, const bignum *, bignum *);
+void bn_mul(const bignum *, const bignum *, bignum *);
 
 /*divide.c*/
 void bn_div_2(bignum *);
@@ -54,24 +58,32 @@ int8_t bn_iseven(const bignum *);
 int8_t bn_isodd(const bignum *);
 uint32_t bn_min_ui(uint32_t, uint32_t);
 uint32_t bn_max_ui(uint32_t, uint32_t);
+int32_t bn_min_si(int32_t, int32_t);
+int32_t bn_max_si(int32_t, int32_t);
 int64_t bn_min_sl(int64_t, int64_t);
 int64_t bn_max_sl(int64_t, int64_t);
 
 /*print.c*/
-void bn_prnt_blocks(bignum *);
-void bn_prnt_dec(bignum *);
+void bn_prnt_blocks(const bignum *);
+void bn_prnt_dec(const bignum *);
 
 /*conversion.c*/
-char* bn_conv_bn2str(bignum *);
+char* bn_conv_bn2str(const bignum *);
+void bn_conv_str2bn(const char *, bignum *);
+void bn_conv_int2bn(uint32_t, bignum *);
+void bn_conv_byte2bn(uint8_t, bignum *);
 
 /*strings.c*/
+int8_t isdigit_str(const char *);
 void bn_str_mul256(char *, char *);
 void bn_str_add(char *, char *, char *);
 
 /*add.c*/
 void bn_add(const bignum *, const bignum *, bignum *);
+void bn_add_abs(const bignum *, const bignum *, bignum *);
 void bn_add_byte(const bignum *, uint8_t, bignum *);
 void bn_add_1(bignum *);
 
 /*operations.c*/
 void bn_subtract(const bignum *, const bignum *, bignum *);
+void bn_subtract_abs(const bignum *, const bignum *, bignum *);

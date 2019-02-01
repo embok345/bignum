@@ -54,6 +54,7 @@ void bn_rand(bignum *num, uint32_t noBlocks) {
     num->blocks[i] = rand()%256;
   }
   bn_removezeros(num);
+  num->sign = 1;
 }
 
 void bn_clone(bignum *new, const bignum *old) {
@@ -95,6 +96,8 @@ void inline bn_addblocks(bignum *num, uint32_t noBlocks) {
 
 void bn_blockshift(bignum *num, int32_t amount) {
   if(amount == 0)
+    return;
+  if(num->noBlocks == 0 || bn_equals(num, &ZERO))
     return;
   if(amount<0) {
     if(abs(amount) >= num->noBlocks) {
@@ -141,11 +144,13 @@ void bn_bitshift(bignum *num, int64_t amount) {
 
 //Note it doesn't actually realloc.
 void bn_removezeros(bignum *in) {
-  if(in->noBlocks == 1 || in->blocks[in->noBlocks-1] !=0 ) return;
+  if(in->noBlocks < 1 || in->blocks[in->noBlocks-1] !=0 ) return;
 
-  while(in->blocks[in->noBlocks-1] == 0 && in->noBlocks>0) {
+  while( in->noBlocks>=1 && in->blocks[in->noBlocks-1] == 0) {
     in->noBlocks--;
+    //printf("%"PRIu32"\n", in->noBlocks);
   }
+  //printf("removed zeros\n");
 }
 
 uint32_t bn_leadingZeros(const bignum *in) {
@@ -162,6 +167,11 @@ void bn_littleblocks(const bignum *num, uint32_t length, bignum *out) {
     bn_destroy(out);
     return;
   }
+  if(length == 0) {
+    bn_clone(out, &ZERO);
+    return;
+  }
+
   bn_clone(out, num);
   if(length<num->noBlocks)
     bn_resize(out, length);
@@ -172,25 +182,31 @@ void bn_bigblocks(const bignum *num, uint32_t length, bignum *out) {
     bn_destroy(out);
     return;
   }
+  if(length == 0) {
+    bn_clone(out, &ZERO);
+    return;
+  }
   bn_clone(out, num);
   if(length<num->noBlocks)
-    bn_blockshift(out, num->noBlocks-length);
+    bn_blockshift(out, -(num->noBlocks-length));
 }
 
 uint32_t bn_length(const bignum *num) {
   return num->noBlocks;
 }
 uint32_t bn_trueLength(const bignum *num) {
-  return bn_length(num) - bn_leadingZeros(num);
+  uint32_t len = bn_length(num) - bn_leadingZeros(num);
+  //if(len==0) len++;
+  return len;
 }
 
 uint8_t bn_getBlock(const bignum *num, uint32_t index) {
   if(index>=num->noBlocks) return 0; //TODO return something more appropriate.
   return num->blocks[index];
 }
-int8_t bn_setBlock(bignum *num, uint32_t index, uint8_t val) {
-  if(index>=num->noBlocks) return 1;
-  num->blocks[index] = val;
+void bn_setBlock(bignum *num, uint32_t index, uint8_t val) {
+  if(index<num->noBlocks)
+    num->blocks[index] = val;
 }
 /*int8_t bn_getSign(const bignum *num) {
   return num->sign;

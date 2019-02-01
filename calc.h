@@ -5,7 +5,7 @@
 /* strings.c */
 int remove_whitespace(const char*, char*);
 int isalnum_str(const char*);
-int isdigit_str(const char*);
+//int isdigit_str(const char*);
 char* find_longest_prefix(char**, int32_t);
 
 /* util.c */
@@ -35,7 +35,7 @@ struct tree_node_t {
 int is_valid_var_name(const char*);
 void new_node(char*, char*, tree_node_t*);
 tree_node_t* get_variable(char*, tree_node_t*);
-void save_variable(char*, char*, tree_node_t**);
+tree_node_t* save_variable(char*, char*, tree_node_t**);
 void show_vars(tree_node_t*);
 tree_node_t* find_prefix_node(const char*, tree_node_t*);
 int32_t tree_size(const tree_node_t*);

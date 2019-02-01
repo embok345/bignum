@@ -1,5 +1,17 @@
 #include "bignum.h"
 
+int8_t isdigit_str(const char* str) {
+  if(strlen(str) == 0) return 0;
+  if(*str == '-') {
+    if(strlen(str) == 1) return 0;
+    str++;
+  }
+  while(*str!='\0') {
+    if(!isdigit(*str)) return 0;
+    str++;
+  }
+  return 1;
+}
 
 void bn_str_add(char *in1, char *in2, char *out) {
   uint8_t remainder, temp;

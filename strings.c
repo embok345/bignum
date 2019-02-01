@@ -50,13 +50,13 @@ int isalnum_str(const char* str) {
  *
  * return int - 1 if the string is digital, 0 otherwise.
  */
-int isdigit_str(const char* str) {
+/*int isdigit_str(const char* str) {
   while(*str!='\0') {
     if(!isdigit(*str)) return 0;
     str++;
   }
   return 1;
-}
+}*/
 
 /* Gets the longest prefix of all of the strings in the array.
  * -----------------------------------------------------------------------------

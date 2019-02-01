@@ -1,6 +1,6 @@
 #include "bignum.h"
 
-void bn_prnt_blocks(bignum *num) {
+void bn_prnt_blocks(const bignum *num) {
   if(bn_isempty(num)) {
     printf("Bignum is empty\n");
     return;
@@ -12,7 +12,7 @@ void bn_prnt_blocks(bignum *num) {
   printf("%"PRIu8"\n", bn_getBlock(num, 0));
 }
 
-void bn_prnt_dec(bignum *num) {
+void bn_prnt_dec(const bignum *num) {
   if(bn_isempty(num)) {
     printf("Bignum is empty\n");
     return;

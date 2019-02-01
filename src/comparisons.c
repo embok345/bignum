@@ -9,6 +9,14 @@ int8_t bn_compare(const bignum *i1, const bignum *i2) {
   uint32_t size1 = bn_trueLength(i1);
   uint32_t size2 = bn_trueLength(i2);
 
+  if(size1 == 0) {
+    if(size2 == 0) {
+      return 0;
+    }
+    return -1;
+  }
+  if(size2 == 0) return 1;
+
   if(bn_isempty(i1)) {
     if(bn_isempty(i2)) {
       return 0;
@@ -64,6 +72,14 @@ uint32_t bn_min_ui(uint32_t in1, uint32_t in2) {
 }
 /*Returns the larger of in1 and in2*/
 uint32_t bn_max_ui(uint32_t in1, uint32_t in2) {
+  return (in1<in2) ? in2 : in1;
+}
+
+int32_t bn_min_si(int32_t in1, int32_t in2) {
+  return (in1<in2) ? in1 : in2;
+}
+
+int32_t bn_max_si(int32_t in1, int32_t in2) {
   return (in1<in2) ? in2 : in1;
 }
 

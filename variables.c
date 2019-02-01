@@ -25,12 +25,14 @@ void new_node(char* label,
   node->label = malloc(strlen(label));
   memcpy(node->label, label, strlen(label));
   node->label[strlen(label)] = '\0';
-  bignum newNum = bn_conv_str2bn(value);
+  /*bignum newNum = bn_conv_str2bn(value);
   //I hate this, but it seems the only way this will work
   node->value = malloc(sizeof(bignum));
   (node->value)->noBlocks = newNum.noBlocks;
   (node->value)->blocks = newNum.blocks;
-  (node->value)->sign = newNum.sign;
+  (node->value)->sign = newNum.sign;*/
+  bn_init(&node->value);
+  bn_conv_str2bn(value, node->value);
   node->left = NULL;
   node->right = NULL;
 
@@ -80,15 +82,15 @@ tree_node_t* get_variable(char* label,
  * char* value - A string representing the value to be stored in the variable.
  * tree_node_t* root - The root of the tree in which to store the variable.
  */
-void save_variable(char* label,
-                   char* value,
-                   tree_node_t** root) {
+tree_node_t* save_variable(char* label,
+                           char* value,
+                           tree_node_t** root) {
 
   //If the variable name is not valid, don't save it.
   if(!is_valid_var_name(label)) {
     printf("Invalid variable name: must be alphanumeric"
            " and begin with a lower case letter.\n");
-    return;
+    return NULL;
   }
 
   tree_node_t* nextNode;
@@ -98,7 +100,7 @@ void save_variable(char* label,
   if(!currentNode) {
     *root = malloc(sizeof(tree_node_t));
     new_node(label, value, *root);
-    return;
+    return *root;
   }
 
   do {
@@ -107,15 +109,9 @@ void save_variable(char* label,
 
     //If they are the same, we are overwriting the current variable.
     if(comp==0) {
-      //Remove the current number...
-      bn_destroy(currentNode->value);
-      //and insert the new number.
-      bignum newNum = bn_conv_str2bn(value);
-      //Again, this seems horrible.
-      (currentNode->value)->noBlocks = newNum.noBlocks;
-      (currentNode->value)->blocks = newNum.blocks;
-      (currentNode->value)->sign = newNum.sign;
-      return;
+      //Insert the new number.
+      bn_conv_str2bn(value, currentNode->value);
+      return currentNode;
     }
     //Otherwise we go to either the left subtree...
     else if(comp<0) {
@@ -125,7 +121,7 @@ void save_variable(char* label,
         nextNode = malloc(sizeof(tree_node_t));
         new_node(label, value, nextNode);
         currentNode->left = nextNode;
-        return;
+        return nextNode;
       }
       //If the left subtree exists, we move down to its root
       //and continue.
@@ -138,12 +134,13 @@ void save_variable(char* label,
         nextNode = malloc(sizeof(tree_node_t));
         new_node(label, value, nextNode);
         currentNode->right = nextNode;
-        return;
+        return nextNode;
       }
       currentNode = currentNode->right;
       continue;
     }
   } while(1);
+  return NULL;
 }
 
 /* Prints out all of the currently saved variables, and their values, so long as
@@ -156,10 +153,10 @@ void show_vars(tree_node_t* node) {
   if(node) {
     show_vars(node->left);
     printf("%s = ", node->label);
-    if((node->value)->noBlocks < 100)
-      bn_prnt_dec(*(node->value));
+    if(bn_length(node->value) < 100)
+      bn_prnt_dec(node->value);
     else
-      printf("~256^%"PRIu32"\n", (node->value)->noBlocks);
+      printf("~256^%"PRIu32"\n", bn_length(node->value));
     show_vars(node->right);
   }
 }
