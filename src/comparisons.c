@@ -9,6 +9,8 @@ int8_t bn_compare(const bignum *i1, const bignum *i2) {
   uint32_t size1 = bn_trueLength(i1);
   uint32_t size2 = bn_trueLength(i2);
 
+  //printf("compare called\n");
+
   if(size1 == 0) {
     if(size2 == 0) {
       return 0;

@@ -1,13 +1,20 @@
 #include "bignum.h"
 
+/* Converts a bignum into a string. The string can be freed later, in the
+ * calling function. This function is probably woefully inefficient.
+ * ---------------------------------------------------------------------------
+ */
 char *bn_conv_bn2str(const bignum *num) {
+
   char *out, *x, *temp, *workStr = (char *)malloc(3);
   workStr[0]='\0';
+  //If the bignum is empty, return an empty string. (is this best?)
   if(bn_isempty(num)) return workStr;
 
-  uint32_t numBlocks = bn_length(num);
+  uint32_t numBlocks = bn_trueLength(num);
   for(uint32_t i = numBlocks-1; i>0; i--) {
     //Convert the current block to a string
+    //An 8 bit number takes at most 3 digits
     x = (char*)malloc(4);
     sprintf(x,"%"PRIu8, bn_getBlock(num, i));
     x[3]='\0';
@@ -41,6 +48,17 @@ char *bn_conv_bn2str(const bignum *num) {
   out = (char *)malloc(strlen(workStr)+1);
   strcpy(out, workStr);
   free(workStr);
+
+  //If the number is negative, add a minus sign to the front
+  if(bn_isnegative(num)) {
+    char temp2[strlen(out)+1];
+    temp2[0] = '-';
+    temp2[1] = '\0';
+    strcat(temp2, out);
+    out = realloc(out, strlen(out)+2);
+    strcpy(out, temp2);
+  }
+
   return out;
 }
 
@@ -63,8 +81,21 @@ void bn_conv_str2bn(const char* str, bignum *num) {
     bn_add_byte(num, str[i]-48, num);
     //Multiply out by 10
     bn_mul_byte(num, 10, num);
+    //bn_prnt_blocks(num);
   }
+  //bn_prnt_blocks(num);
+  //printf("%"PRIu8"\n", str[len-1]-48);
   bn_add_byte(num, str[len-1]-48, num);
+  //bn_prnt_blocks(num);
+}
+
+uint32_t bn_conv_bn2int(const bignum *in) {
+  uint32_t out = 0;
+  for(int i=0; i<bn_min_ui(4,bn_length(in)); i++) {
+    out>>=8;
+    out+=bn_getBlock(in, i);
+  }
+  return out;
 }
 
 void bn_conv_int2bn(uint32_t in, bignum *out) {

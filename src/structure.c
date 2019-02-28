@@ -1,9 +1,9 @@
 #include "bignum.h"
 
 struct bignum {
-	uint32_t noBlocks;
-	uint8_t* blocks;
-	int8_t sign;
+  uint32_t noBlocks;
+  uint8_t* blocks;
+  int8_t sign;
 };
 
 uint8_t nums0[] = {0};
@@ -19,6 +19,15 @@ void bn_init(bignum **num) {
   (*num)->noBlocks = 0;
   (*num)->blocks = NULL;
   (*num)->sign = 0;
+}
+
+void bn_inits(int num, ...) {
+  va_list valist;
+  va_start(valist, num);
+  for(int i=0; i<num; i++) {
+    bn_init(va_arg(valist, bignum **));
+  }
+  va_end(valist);
 }
 
 void bn_resize(bignum *num, uint32_t noBlocks) {
@@ -37,14 +46,17 @@ void bn_resize(bignum *num, uint32_t noBlocks) {
   num->noBlocks = noBlocks;
 }
 
-void bn_set(bignum *num, uint32_t noBlocks, uint8_t *blocks, int8_t sign) {
+void bn_set(bignum *num, uint32_t noBlocks, const uint8_t *blocks, int8_t sign) {
   bn_resize(num, noBlocks);
   num->sign = sign;
   memcpy(num->blocks, blocks, noBlocks);
 }
 
+void bn_setzero(bignum *num) {
+  bn_clone(num, &ZERO);
+}
 
-void bn_rand(bignum *num, uint32_t noBlocks) {
+void bn_rand_blocks(bignum *num, uint32_t noBlocks) {
   if(noBlocks == 0) {
     bn_destroy(num);
     return;
@@ -57,6 +69,28 @@ void bn_rand(bignum *num, uint32_t noBlocks) {
   num->sign = 1;
 }
 
+void bn_rand(bignum *out, const bignum *in) {
+  if(bn_iszero(in)) {
+    bn_destroy(out);
+  }
+  uint32_t len = bn_trueLength(in);
+  bn_resize(out, len);
+  int8_t newIsBigger = 1;
+  uint8_t newByte;
+  for(uint32_t i=0; i<len; i++) {
+    if(newIsBigger) {
+      newByte = rand()%((in->blocks[len-i])+1);
+      if(newByte < in->blocks[len-i])
+        newIsBigger = 0;
+    } else {
+      newByte = rand()%256;
+    }
+    out->blocks[len-i] = newByte;
+  }
+  bn_removezeros(out);
+  out->sign = 1;
+}
+
 void bn_clone(bignum *new, const bignum *old) {
   if(new->blocks == old->blocks) return;
   if(bn_isempty(old)) {
@@ -66,6 +100,18 @@ void bn_clone(bignum *new, const bignum *old) {
   bn_resize(new, old->noBlocks);
   memcpy(new->blocks, old->blocks, old->noBlocks);
   new->sign = old->sign;
+}
+
+void bn_swap(bignum *in1, bignum *in2) {
+  uint32_t tempLen = in1->noBlocks;
+  in1->noBlocks = in2->noBlocks;
+  in2->noBlocks = tempLen;
+  int8_t tempSign = in1->sign;
+  in1->sign = in2->sign;
+  in2->sign = tempSign;
+  uint8_t *tempBlocks = in1->blocks;
+  in1->blocks = in2->blocks;
+  in2->blocks = tempBlocks;
 }
 
 void bn_destroy(bignum *num) {
@@ -81,9 +127,23 @@ void bn_nuke(bignum **num) {
   }
   *num = NULL;
 }
+void bn_nukes(int num, ...) {
+  va_list valist;
+  va_start(valist, num);
+  for(int i=0; i<num; i++) {
+    bn_nuke(va_arg(valist, bignum **));
+  }
+  va_end(valist);
+}
 
 int8_t bn_isempty(const bignum *num) {
+  //printf("is empty called\n");
   return (num->noBlocks == 0 || !num->blocks) ? 1 : 0;
+}
+
+int8_t bn_iszero(const bignum *num) {
+   //printf("is zero called\n");
+  return bn_isempty(num) || bn_equals(num, &ZERO);
 }
 
 void inline bn_addblock(bignum *num) {
@@ -97,8 +157,14 @@ void inline bn_addblocks(bignum *num, uint32_t noBlocks) {
 void bn_blockshift(bignum *num, int32_t amount) {
   if(amount == 0)
     return;
-  if(num->noBlocks == 0 || bn_equals(num, &ZERO))
+  if(bn_iszero(num)) {
+    //printf("Here\n");
+    bn_resize(num, num->noBlocks + amount);
+    //printf("Done resizing\n");
     return;
+  }
+  /*if(num->noBlocks == 0 || bn_equals(num, &ZERO))
+    return;*/
   if(amount<0) {
     if(abs(amount) >= num->noBlocks) {
       bn_clone(num, &ZERO);
@@ -154,11 +220,14 @@ void bn_removezeros(bignum *in) {
 }
 
 uint32_t bn_leadingZeros(const bignum *in) {
+  //printf("leading zeros called\n");
   if(bn_isempty(in)) return 0;
   uint32_t numZeros = 0;
   uint32_t noBlocks=bn_length(in);
   if(noBlocks == 1 || bn_getBlock(in, noBlocks - 1) != 0) return 0;
-  while(bn_getBlock(in, --noBlocks)==0) numZeros++;
+  //printf("doing this\n");
+  while(noBlocks >= 1 && bn_getBlock(in, --noBlocks)==0) numZeros++;
+  //printf("returing from leading zeros\n");
   return numZeros;
 }
 
@@ -195,6 +264,7 @@ uint32_t bn_length(const bignum *num) {
   return num->noBlocks;
 }
 uint32_t bn_trueLength(const bignum *num) {
+  //printf("true length called\n");
   uint32_t len = bn_length(num) - bn_leadingZeros(num);
   //if(len==0) len++;
   return len;

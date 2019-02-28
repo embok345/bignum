@@ -19,14 +19,30 @@ void bn_prnt_dec(const bignum *num) {
   }
   char *out;
   out = bn_conv_bn2str(num);
-  if(bn_isnegative(num)) {
-    char temp[strlen(out)+1];
-    temp[0] = '-';
-    temp[1] = '\0';
-    strcat(temp, out);
-    out = realloc(out, strlen(out)+2);
-    strcpy(out, temp);
-  }
   printf("%s\n", out);
   free(out);
+}
+
+int bn_printf(FILE *stream,
+              const struct printf_info *info,
+              const void *const *args) {
+  const bignum *num;
+  char *buffer;
+  int len;
+
+  num = *((const bignum **) (args[0]));
+  buffer = bn_conv_bn2str(num);
+  len = strlen(buffer);
+
+  len = fprintf(stream, "%*s", (info->left ? -info->width : info->width),
+                buffer);
+
+  free(buffer);
+  return len;
+}
+
+int bn_printf_info(const struct printf_info *info, size_t n, int *argtypes, int *sz) {
+  if(n>0)
+    argtypes[0] = PA_POINTER;
+  return 1;
 }
