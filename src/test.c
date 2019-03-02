@@ -6,12 +6,11 @@ int main() {
   srand(time(NULL));
 
   register_printf_specifier('B', bn_printf, bn_printf_info);
-  bignum *a, *b, *c;
-  bn_inits(3, &a, &b, &c);
+  bignum *a, *b, *c, *d;
+  bn_inits(4, &a, &b, &c, &d);
 
-  for(int i=0; i<100; i++) {
-    bn_rand(a, 256);
-    bn_rand(a, 256);
-    bn_mul(a, b, c);
-  }
+  bn_float *e;
+  bnf_init(&e);
+  bn_conv_str2bn("123456789", a);
+  bnf_invert(a, e);
 }

@@ -58,6 +58,11 @@ void bnf_init(bn_float **);
 void bnf_inits(int, ...);
 void bnf_nuke(bn_float **);
 void bnf_nukes(int, ...);
+void bnf_bn2bnf(const bignum *, bn_float *);
+void bnf_prnt(const bn_float *);
+void bnf_add(const bn_float *, const bn_float *, bn_float *);
+void bnf_mul(const bn_float *, const bn_float *, bn_float *);
+void bnf_invert(const bignum *, bn_float *);
 
 /*multiply.c*/
 void bn_mul_byte(const bignum *, uint8_t, bignum *);
