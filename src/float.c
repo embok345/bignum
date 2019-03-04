@@ -2,6 +2,78 @@
 
 const uint16_t B = 256;
 
+//999 blocks for the number 1/67073
+const int32_t NR_INIT_D_E = 999;
+const uint8_t NR_INIT_D_BLOCKS[] =
+{9, 42, 250, 248, 47, 231, 100, 187, 54, 252, 223, 195, 136, 7, 74,
+60, 76, 250, 213, 1, 31, 68, 72, 10, 122, 25, 237, 87, 3, 148, 132,
+80, 152, 29, 182, 157, 151, 212, 108, 158, 220, 53, 224, 136, 234,
+247, 69, 100, 96, 89, 135, 122, 153, 236, 218, 241, 121, 50, 87, 194,
+26, 157, 54, 27, 38, 0, 217, 233, 171, 14, 252, 8, 206, 34, 97, 150,
+24, 214, 226, 216, 7, 248, 39, 24, 71, 61, 73, 11, 115, 66, 254, 199,
+81, 77, 222, 124, 52, 72, 26, 26, 73, 47, 155, 45, 83, 223, 112, 123,
+170, 133, 51, 69, 45, 171, 207, 118, 103, 28, 238, 78, 56, 95, 140,
+86, 108, 31, 215, 213, 37, 71, 47, 157, 33, 153, 71, 185, 96, 2, 145,
+151, 225, 30, 101, 130, 140, 50, 68, 52, 130, 190, 6, 25, 99, 148,
+34, 156, 52, 40, 218, 186, 196, 168, 70, 175, 157, 158, 170, 97, 11,
+90, 216, 147, 176, 72, 155, 19, 239, 81, 37, 206, 5, 15, 160, 48, 60,
+102, 94, 99, 77, 204, 232, 190, 157, 142, 10, 50, 201, 22, 174, 212,
+85, 40, 184, 134, 31, 188, 119, 117, 199, 221, 5, 255, 255, 0, 250,
+34, 52, 164, 242, 171, 5, 50, 206, 248, 92, 217, 138, 229, 19, 163,
+25, 195, 83, 70, 6, 148, 129, 98, 47, 129, 201, 197, 147, 195, 214,
+51, 242, 30, 84, 232, 57, 188, 92, 23, 23, 94, 180, 103, 221, 103,
+179, 99, 246, 213, 5, 7, 208, 24, 155, 68, 201, 3, 32, 60, 119, 248,
+181, 195, 179, 5, 42, 254, 224, 187, 183, 245, 133, 230, 18, 168,
+252, 107, 123, 175, 103, 226, 73, 98, 104, 43, 147, 97, 35, 202, 31,
+119, 21, 8, 186, 155, 159, 166, 120, 133, 102, 19, 37, 14, 134, 205,
+168, 61, 229, 98, 201, 228, 217, 255, 38, 22, 84, 241, 3, 247, 49,
+221, 158, 105, 231, 41, 29, 39, 248, 7, 216, 231, 184, 194, 182, 244,
+140, 189, 1, 56, 174, 178, 33, 131, 203, 183, 229, 229, 182, 208,
+100, 210, 172, 32, 143, 132, 85, 122, 204, 186, 210, 84, 48, 137,
+152, 227, 17, 177, 199, 160, 115, 169, 147, 224, 40, 42, 218, 184,
+208, 98, 222, 102, 184, 70, 159, 253, 110, 104, 30, 225, 154, 125,
+115, 205, 187, 203, 125, 65, 249, 230, 156, 107, 221, 99, 203, 215,
+37, 69, 59, 87, 185, 80, 98, 97, 85, 158, 244, 165, 39, 108, 79, 183,
+100, 236, 16, 174, 218, 49, 250, 240, 95, 207, 195, 153, 161, 156,
+178, 51, 23, 65, 98, 113, 245, 205, 54, 233, 81, 43, 170, 215, 71,
+121, 224, 67, 136, 138, 56, 34, 250, 0, 0, 255, 5, 221, 203, 91, 13,
+84, 250, 205, 49, 7, 163, 38, 117, 26, 236, 92, 230, 60, 172, 185,
+249, 107, 126, 157, 208, 126, 54, 58, 108, 60, 41, 204, 13, 225, 171,
+23, 198, 67, 163, 232, 232, 161, 75, 152, 34, 152, 76, 156, 9, 42,
+250, 248, 47, 231, 100, 187, 54, 252, 223, 195, 136, 7, 74, 60, 76,
+250, 213, 1, 31, 68, 72, 10, 122, 25, 237, 87, 3, 148, 132, 80, 152,
+29, 182, 157, 151, 212, 108, 158, 220, 53, 224, 136, 234, 247, 69,
+100, 96, 89, 135, 122, 153, 236, 218, 241, 121, 50, 87, 194, 26, 157,
+54, 27, 38, 0, 217, 233, 171, 14, 252, 8, 206, 34, 97, 150, 24, 214,
+226, 216, 7, 248, 39, 24, 71, 61, 73, 11, 115, 66, 254, 199, 81, 77,
+222, 124, 52, 72, 26, 26, 73, 47, 155, 45, 83, 223, 112, 123, 170,
+133, 51, 69, 45, 171, 207, 118, 103, 28, 238, 78, 56, 95, 140, 86,
+108, 31, 215, 213, 37, 71, 47, 157, 33, 153, 71, 185, 96, 2, 145,
+151, 225, 30, 101, 130, 140, 50, 68, 52, 130, 190, 6, 25, 99, 148,
+34, 156, 52, 40, 218, 186, 196, 168, 70, 175, 157, 158, 170, 97, 11,
+90, 216, 147, 176, 72, 155, 19, 239, 81, 37, 206, 5, 15, 160, 48, 60,
+102, 94, 99, 77, 204, 232, 190, 157, 142, 10, 50, 201, 22, 174, 212,
+85, 40, 184, 134, 31, 188, 119, 117, 199, 221, 5, 255, 255, 0, 250,
+34, 52, 164, 242, 171, 5, 50, 206, 248, 92, 217, 138, 229, 19, 163,
+25, 195, 83, 70, 6, 148, 129, 98, 47, 129, 201, 197, 147, 195, 214,
+51, 242, 30, 84, 232, 57, 188, 92, 23, 23, 94, 180, 103, 221, 103,
+179, 99, 246, 213, 5, 7, 208, 24, 155, 68, 201, 3, 32, 60, 119, 248,
+181, 195, 179, 5, 42, 254, 224, 187, 183, 245, 133, 230, 18, 168,
+252, 107, 123, 175, 103, 226, 73, 98, 104, 43, 147, 97, 35, 202, 31,
+119, 21, 8, 186, 155, 159, 166, 120, 133, 102, 19, 37, 14, 134, 205,
+168, 61, 229, 98, 201, 228, 217, 255, 38, 22, 84, 241, 3, 247, 49,
+221, 158, 105, 231, 41, 29, 39, 248, 7, 216, 231, 184, 194, 182, 244,
+140, 189, 1, 56, 174, 178, 33, 131, 203, 183, 229, 229, 182, 208,
+100, 210, 172, 32, 143, 132, 85, 122, 204, 186, 210, 84, 48, 137,
+152, 227, 17, 177, 199, 160, 115, 169, 147, 224, 40, 42, 218, 184,
+208, 98, 222, 102, 184, 70, 159, 253, 110, 104, 30, 225, 154, 125,
+115, 205, 187, 203, 125, 65, 249, 230, 156, 107, 221, 99, 203, 215,
+37, 69, 59, 87, 185, 80, 98, 97, 85, 158, 244, 165, 39, 108, 79, 183,
+100, 236, 16, 174, 218, 49, 250, 240, 95, 207, 195, 153, 161, 156,
+178, 51, 23, 65, 98, 113, 245, 205, 54, 233, 81, 43, 170, 215, 71,
+121, 224, 67, 136, 138, 56, 34, 250, 0, 0};
+
+
 //Stores the number m*256^e
 struct bn_float {
   bignum *m;
@@ -45,6 +117,15 @@ void bnf_bn2bnf(const bignum *in, bn_float *out) {
   bn_clone(out->m, in);
 }
 
+void bnf_clone(bn_float *out, const bn_float *in) {
+  out->e = in->e;
+  bn_clone(out->m, in->m);
+}
+
+int8_t bnf_equals(const bn_float *a, const bn_float *b) {
+  return bn_equals(a->m, b->m) && (a->e == b->e);
+}
+
 void bnf_prnt(const bn_float *in) {
   printf("%B * %"PRIu16"^%"PRId32"\n", in->m, B, in->e);
 }
@@ -54,79 +135,113 @@ void bnf_prnt_blocks(const bn_float *in) {
 
 void bnf_add(const bn_float *in1, const bn_float *in2, bn_float *out) {
   if(in1->e < in2->e) {
-    //printf("swapping them\n");
     bnf_add(in2, in1, out);
     return;
-  } else {
-  //printf("in1->e = %"PRId32"\nin2->e = %"PRId32"\n", in1->e, in2->e);
+  }
   int32_t k = in1->e - in2->e;
   bignum *new_m;
   bn_init(&new_m);
   bn_clone(new_m, in1->m);
-  //bn_prnt_blocks(in1->m);
-  //bn_prnt_blocks(new_m);
-  //printf("k=%"PRId32"\n", k);
   bn_blockshift(new_m, k);
-  //bn_prnt_blocks(new_m);
   bn_add(new_m, in2->m, new_m);
-  //printf("A+B = %B\n", new_m);
   bn_nuke(&(out->m));
   out->m = new_m;
   out->e = in2->e;
-  }
 }
 
 void bnf_mul(const bn_float *a, const bn_float *b, bn_float *c) {
+  //printf("a = %B\nb = %B\n", a->m, b->m);
   bn_mul(a->m, b->m, c->m);
   c->e = a->e + b->e;
 }
 
-void bnf_invert(const bignum *D, bn_float *out) {
-  bn_float *x, *c1, *c2, *d, *t1, *t2, *t3, *o;
-  bnf_inits(8, &x, &c1, &c2, &d, &t1, &t2, &t3, &o);
-  uint32_t n = bn_trueLength(D)+2;
-  c1->e = -n-1;
-  c2->e = -n-1;
-  uint8_t *blocks1 = malloc(n+2), *blocks2 = malloc(n+2);
-  blocks1[n+1] = 2;
-  blocks2[n+1] = 1;
-  for(uint32_t i = 0; i<=n; i++) {
-    blocks1[i] = 210;
-    blocks2[i] = 225;
-  }
-  bn_set(c1->m, n+2, blocks1, 1);
-  bn_set(c2->m, n+2, blocks2, 1);
+void bnf_mul_bn(const bn_float *a, const bignum *b, bn_float *c) {
+  //printf("a\n");
+  bn_float *temp;
+  //printf("b\n");
+  bnf_init(&temp);
+  //printf("c\n");
+  bnf_bn2bnf(b, temp);
+  //printf("d\n");
+  //bnf_prnt(temp);
+  bnf_mul(a, temp, c);
+  //bnf_prnt(c);
+  //printf("e\n");
+  //bnf_nuke(&temp);//Why doesn't it like this?
+  //printf("f\n");
+}
 
-  bnf_prnt(c1);
-  bnf_prnt(c2);
+void bnf_integerPart(const bn_float *in, bignum *out) {
+  bn_clone(out, in->m);
+  //printf("cloned\n");
+  bn_blockshift(out, in->e);
+  //printf("shifted\n");
+}
+
+void bnf_invert(const bignum *D, bn_float *out) {
+  bn_float *x, *new_x, *d, *o, *temp1, *temp2, *temp3, *init_d, *t1, *t2;
+  bnf_inits(10, &x, &new_x, &d, &o, &temp1, &temp2, &temp3, &init_d, &t1, &t2);
+  uint32_t n = bn_trueLength(D)+2;
+
+  bignum *init_d_b, *t1_n, *t2_n;
+  bn_inits(3, &init_d_b, &t1_n, &t2_n);
+  bn_conv_int2bn(526336, t1_n);
+  bn_conv_int2bn(524288, t2_n);
+
+  if(n > NR_INIT_D_E) n = NR_INIT_D_E;
+  if(n<4) n=4;
+
+  bn_set(init_d_b, n, NR_INIT_D_BLOCKS + (NR_INIT_D_E-n), 1);
+  init_d->m = init_d_b;
+  init_d->e = -n;
+  bnf_bn2bnf(t1_n, t1);
+  bnf_bn2bnf(t2_n, t2);
+
+  bnf_mul(init_d, t1, t1);
+  bnf_mul(init_d, t2, t2);
 
   bnf_bn2bnf(&ONE, o);
   bnf_bn2bnf(D, d);
-  d->e = (-n) + 2;
-  bn_signSwap(d->m);
-  //bnf_prnt_blocks(d);
-  printf("d=");bnf_prnt(d);
-  bnf_mul(c2, d, x);
-  printf("c2*d=");bnf_prnt(x);
-  bnf_add(c1, x, x);
-  printf("c1 - c2*d=");bnf_prnt(x);
-  printf("\n");
+  d->e = -bn_trueLength(D);
 
-  for(int i=0; i<10; i++) {
-    bnf_mul(d, x, t1);
-    printf("-d*x = ");bnf_prnt(t1);
-    bnf_add(o, t1, t2);
-    printf("1-d*x = ");bnf_prnt(t2);
-    bnf_mul(x, t2, t3);
-    printf("x*(1-d*x) = ");bnf_prnt(t3);
-    bnf_add(x, t3, x);
-    printf("x + x*(1-d*x) = ");bnf_prnt(x);
-    uint32_t newLen = bn_trueLength(x->m)+2;
+  bn_signSwap(d->m);
+  //printf("d=");bnf_prnt(d);
+  bnf_mul(t2, d, x);
+  //printf("c2*d=");bnf_prnt(x);
+  bnf_add(t1, x, x);
+  //printf("c1 - c2*d=");bnf_prnt(x);
+  //printf("\n");
+
+  for(int i=0; i<100; i++) {
+    bnf_mul(d, x, temp1);
+    //printf("-d*x = ");bnf_prnt(temp1);
+    bnf_add(o, temp1, temp2);
+    //printf("1-d*x = ");bnf_prnt(temp2);
+    bnf_mul(x, temp2, temp3);
+    //printf("x*(1-d*x) = ");bnf_prnt(temp3);
+    bnf_add(x, temp3, new_x);
+    //printf("x + x*(1-d*x) = ");bnf_prnt(x);
+
+    //uint32_t newLen = bn_trueLength(x->m)+2;
+    uint32_t newLen = bn_trueLength(new_x->m) + 2;
+
     if(newLen > n+2) {
-      bn_blockshift(x->m, n-newLen+2);
-      x->e += newLen - n - 2;
+      //bn_blockshift(x->m, n-newLen+2);
+      bn_blockshift(new_x->m, n-newLen+2);
+      //x->e += newLen - n - 2;
+      new_x->e += newLen - n - 2;
     }
-    printf("trunc x = ");bnf_prnt(x);
-    printf("\n");
+    if(bnf_equals(new_x, x)) {
+      bnf_clone(x, new_x);
+      //printf("Reached stability\n");
+      break;
+    }
+    bnf_clone(x, new_x);
+
+    //printf("trunc x = ");bnf_prnt(x);
+    //printf("\n");
   }
+  x->e -= bn_trueLength(D);
+  //printf("1/D = ");bnf_prnt(x);
+  bnf_clone(out, x);
 }

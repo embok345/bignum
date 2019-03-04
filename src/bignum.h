@@ -52,6 +52,7 @@ int8_t bn_isnegative(const bignum *);
 void bn_setpositive(bignum *);
 void bn_setnegative(bignum *);
 void bn_signSwap(bignum *);
+int8_t bn_getSign(const bignum *);
 
 /*float.c*/
 void bnf_init(bn_float **);
@@ -62,6 +63,8 @@ void bnf_bn2bnf(const bignum *, bn_float *);
 void bnf_prnt(const bn_float *);
 void bnf_add(const bn_float *, const bn_float *, bn_float *);
 void bnf_mul(const bn_float *, const bn_float *, bn_float *);
+void bnf_mul_bn(const bn_float *, const bignum *, bn_float *);
+void bnf_integerPart(const bn_float *, bignum *);
 void bnf_invert(const bignum *, bn_float *);
 
 /*multiply.c*/

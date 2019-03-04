@@ -6,12 +6,35 @@ int main() {
   srand(time(NULL));
 
   register_printf_specifier('B', bn_printf, bn_printf_info);
-  bignum *a, *b, *c;
-  bn_inits(3, &a, &b, &c);
 
-  for(int i=0; i<100; i++) {
-    bn_rand(a, 256);
-    bn_rand(a, 256);
-    bn_mul(a, b, c);
+  bignum *a, *b, *c, *d, *e, *q;
+  bn_inits(6, &a, &b, &c, &d, &e, &q);
+
+  //bn_rand_blocks(a, 256);
+  bn_set(a, 256, DH_14_BLOCKS, 1);
+
+  bn_float *mod, *quot;
+  bnf_inits(2, &mod, &quot);
+  bnf_invert(a, mod);
+
+  for(int i = 0; i<1000; i++) {
+    bn_rand(b, a);
+    bn_mul(b, b, b);
+
+    bnf_mul_bn(mod, b, quot);
+    //bnf_integerPart(quot, q);
+
+    //bn_div_rem(b, a, q);
   }
+
+
+  /*bignum *p, *g, *x, *e;
+  bn_inits(4, &p, &g, &x, &e);
+
+  bn_set(p, 256, DH_14_BLOCKS, 1);
+  bn_conv_int2bn(2, g);
+  bn_rand(x, p);
+  bn_powmod(g, x, p, e);
+
+  printf("%B ^ %B mod %B = %B\n", g, x, p, e);*/
 }

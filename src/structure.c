@@ -18,7 +18,7 @@ void bn_init(bignum **num) {
   *num = malloc(sizeof(bignum));
   (*num)->noBlocks = 0;
   (*num)->blocks = NULL;
-  (*num)->sign = 0;
+  (*num)->sign = 1;
 }
 
 void bn_inits(int num, ...) {
@@ -301,6 +301,10 @@ void bn_signSwap(bignum *num) {
       break;
     default: num->sign = 0;
   }
+}
+
+int8_t bn_getSign(const bignum *num) {
+  return num->sign;
 }
 
 /*void bn_clone_float(bn_float_t *new, const bn_float_t old) {

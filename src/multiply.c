@@ -12,6 +12,8 @@ void bn_mul_tc3(const bignum *, const bignum *, bignum *);
  */
 void bn_mul(const bignum *in1, const bignum *in2, bignum *out) {
 
+  //printf("%"PRId8" * %"PRId8"\n", bn_getSign(in1), bn_getSign(in2));
+
   //If the second input is zero, the output is zero. (The inputs will be
   //swapped if the first is zero, so this always gets called eventually)
   if(bn_iszero(in2)) {
@@ -24,6 +26,7 @@ void bn_mul(const bignum *in1, const bignum *in2, bignum *out) {
 
   //If the first is smaller than the second, swap them over and recall
   if(len1<len2) {
+    //printf("swapped\n");
     bn_mul(in2, in1, out);
     return;
   }
@@ -31,7 +34,9 @@ void bn_mul(const bignum *in1, const bignum *in2, bignum *out) {
   //If the length of the two numbers is less than 50 blocks, use long mul.
   if(len1 <= 50 && len2 <= 50) {
     //printf("long\nin1 = %B\nin2 = %B\n", in1, in2);
+    //printf("long\n");
     bn_mul_long(in1, in2, out);
+    //printf("%"PRId8", %"PRId8"\n", bn_getSign(in1), bn_getSign(in2));
   } else {
   //Otherwise, use karat mul.
     //printf("karat\nin1 = %B\nin2 = %B\n", in1, in2);
@@ -40,9 +45,13 @@ void bn_mul(const bignum *in1, const bignum *in2, bignum *out) {
 
   //printf("done multiplaction\n");
 
+  //printf("%"PRId8", %"PRId8"; ", bn_getSign(in1), bn_getSign(in2));
+
   //If either of the inputs is negative, set the output to be negative.
   if(bn_ispositive(in1) ^ bn_ispositive(in2)) bn_setnegative(out);
   else bn_setpositive(out);
+
+  //printf("%"PRId8"\n", bn_getSign(out));
 
   bn_removezeros(out);
 }
@@ -57,11 +66,15 @@ void bn_mul_long(const bignum *in1, const bignum *in2, bignum *out) {
   uint32_t len1 = bn_trueLength(in1);
   uint32_t len2 = bn_trueLength(in2);
 
+  //printf("start long: %"PRId8"\n", bn_getSign(in2));
+
   //Resize the output to the sum of the lengths of the inputs.
   bn_resize(out, len1+len2);
 
   bignum *mul, *add;
   bn_inits(2, &mul, &add);
+
+  //printf("resize: %"PRId8"\n", bn_getSign(in2));
 
   for(uint32_t i = len2-1; i>0; i--) {
     if(bn_getBlock(in2, i) == 0) {
@@ -79,17 +92,25 @@ void bn_mul_long(const bignum *in1, const bignum *in2, bignum *out) {
     bn_blockshift(add, 1);
   }
 
+  //printf("after main loop: %"PRId8"\n", bn_getSign(in2));
+
   //If the final block of in2 is not 0, do the final multiply and add,
   //and store it into out.
   if(bn_getBlock(in2, 0) != 0) {
+    //printf("final multiply start: %"PRId8"\n", bn_getSign(in2));
     bn_mul_byte(in1, bn_getBlock(in2, 0), mul);
+    //printf("after multiply: %"PRId8"\n", bn_getSign(in2));
+    //printf("%"PRId8", %"PRId8"\n", bn_getSign(mul), bn_getSign(add));
     bn_add(mul, add, out);
+    //printf("final multiply end: %"PRId8"\n", bn_getSign(in2));
   } else {
   //Otherwise just copy the working number into out.
     bn_clone(out, add);
   }
 
   bn_nukes(2, &mul, &add);
+
+  //printf("end long: %"PRId8"\n", bn_getSign(in2));
 }
 
 /* Apply the karatsuba multiplication algorithm to the two inputs, and store
