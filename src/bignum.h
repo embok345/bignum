@@ -124,3 +124,4 @@ void bn_sqrt(const bignum *, bignum *);
 
 /*power.c*/
 void bn_powmod(const bignum *, const bignum *, const bignum *, bignum *);
+void bn_powmod_int(const bignum *, uint32_t, const bignum *, bignum *);
