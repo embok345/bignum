@@ -1,5 +1,10 @@
 #include "bignum.h"
 
+int8_t is_digit(const char c) {
+    return c == '0' || c == '1' || c == '2' || c == '3' || c == '4' ||
+      c == '5' || c == '6' || c == '7' || c == '8' || c == '9';
+}
+
 int8_t isdigit_str(const char* str) {
   if(strlen(str) == 0) return 0;
   if(*str == '-') {
@@ -7,7 +12,7 @@ int8_t isdigit_str(const char* str) {
     str++;
   }
   while(*str!='\0') {
-    if(!isdigit(*str)) return 0;
+    if(!is_digit(*str)) return 0;
     str++;
   }
   return 1;

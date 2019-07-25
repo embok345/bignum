@@ -4,56 +4,58 @@
  * Note that this doesn't actually do any of the adding, it simply
  * calls the appropriate method depending upon the signs of the inputs.
  * ---------------------------------------------------------------------------
- * const bignum *in1 - The first operand.
- * const bignum *in2 - The second operand.
- * bignum *out - The result of the addition.
+ * const bn_t in1 - The first operand.
+ * const bn_t in2 - The second operand.
+ * bn_t out - The result of the addition.
  */
-void bn_add(const bignum *in1, const bignum *in2, bignum *out) {
-  //If the first is +ve, the second -ve, we really subtract the two.
-  //printf("%"PRIu32"\n", bn_length(in1));
-  //printf("%"PRIu8"\n", bn_getBlock(in1, 0));
+void bn_add(const bn_t in1, const bn_t in2, bn_t out) {
+  LOG(BN_LOG, LOG_LEVEL_FINE, "Starting to add");
+
+  //If either operand is 0, just copy the other.
   if(bn_iszero(in1)) {
-    //printf("here1\n");
     bn_clone(out, in2);
     return;
   }
-  //printf("here0\n");
   if(bn_iszero(in2)) {
     bn_clone(out, in1);
     return;
   }
-  //printf("here\n");
 
-  //bn_prnt_dec(in2);
+  //If the first is +ve, the second -ve, we really subtract the two.
   if(bn_ispositive(in1) && bn_isnegative(in2)) {
-    bn_subtract_abs(in1, in2, out);
+    bn_sub_abs(in1, in2, out);
     return;
   }
+
   //If the first is -ve, the second +ve, we really subtract the first from
   //the second.
   if(bn_isnegative(in1) && bn_ispositive(in2)) {
-    bn_subtract_abs(in2, in1, out);
+    bn_sub_abs(in2, in1, out);
     return;
   }
+
   //If they are both negative, we add the two, and set the result negative.
   if(bn_isnegative(in1) && bn_isnegative(in2)) {
     bn_add_abs(in1, in2, out);
     bn_setnegative(out);
     return;
   }
+
   //Otherwise, we just add them.
   bn_add_abs(in1, in2, out);
+
+  LOG(BN_LOG, LOG_LEVEL_FINE, "Finished adding");
 }
 
 /* Adds the absolute values of in1 and in2, ignoring the signs.
  * ---------------------------------------------------------------------------
- * const bignum *in1 - The first operand
- * const bignum *in2 - The second operand
- * bignum *out - The result of the addition.
+ * const bn_t in1 - The first operand
+ * const bn_t in2 - The second operand
+ * bn_t out - The result of the addition.
  */
-void bn_add_abs(const bignum *in1, const bignum *in2, bignum *out) {
+void bn_add_abs(const bn_t in1, const bn_t in2, bn_t out) {
 
-  uint8_t longer = 0, remainder = 0;
+  uint8_t remainder = 0;
   uint16_t temp = 0;
   uint32_t addLength = 0, numLength = 0;
 
@@ -72,21 +74,21 @@ void bn_add_abs(const bignum *in1, const bignum *in2, bignum *out) {
   uint32_t len1 = bn_trueLength(in1);
   uint32_t len2 = bn_trueLength(in2);
 
+  const bn_t longerNum = (len1 > len2) ? in1 : in2;
+
   //Resize the output to be the same length as the longer input.
   if(len1>len2) {
     bn_resize(out, len1);
     addLength = len2;
     numLength = len1;
-    longer = 1;
   } else {
     bn_resize(out, len2);
     addLength = len1;
     numLength = len2;
-    longer = 2;
   }
 
   //Add all of the blocks from the shorter number to those of the longer
-  for(uint32_t i = 0; i<addLength; i++) {
+  for(uint32_t i = 0; i < addLength; i++) {
     temp = (uint16_t)bn_getBlock(in1, i) + (uint16_t)bn_getBlock(in2, i) +
         (uint16_t)remainder;
     bn_setBlock(out, i, (uint8_t)(temp%256));
@@ -94,18 +96,10 @@ void bn_add_abs(const bignum *in1, const bignum *in2, bignum *out) {
   }
 
   //Copy the blocks from the longer number, with remainders from before
-  if(longer == 1) {
-    for(uint32_t i=addLength; i<numLength; i++) {
-      temp = (uint16_t)bn_getBlock(in1, i) + (uint16_t)remainder;
-      bn_setBlock(out, i, (uint8_t)(temp%256));
-      remainder = temp>>8;
-    }
-  } else if(longer == 2) {
-    for(uint32_t i=addLength; i<numLength; i++) {
-      temp = (uint16_t)bn_getBlock(in2, i) + (uint16_t)remainder;
-      bn_setBlock(out, i, (uint8_t)(temp%256));
-      remainder = temp>>8;
-    }
+  for(uint32_t i = addLength; i < numLength; i++) {
+    temp = (uint16_t)bn_getBlock(longerNum, i) + (uint16_t)remainder;
+    bn_setBlock(out, i, (uint8_t)(temp%256));
+    remainder = temp>>8;
   }
 
   //If there is still overflow, put it in to a new block at the end
@@ -120,17 +114,17 @@ void bn_add_abs(const bignum *in1, const bignum *in2, bignum *out) {
 
 /* Add the single byte in2 to the bignum in1, and store it in out
  * ---------------------------------------------------------------------------
- * const bignum *in1 - The bignum to be added to.
+ * const bn_t in1 - The bignum to be added to.
  * uint8_t in2 - The byte to add to the bignum.
- * bignum *out - Bignum to store the result in.
+ * bn_t out - Bignum to store the result in.
  */
-void bn_add_byte(const bignum *in1, uint8_t in2, bignum *out) {
+void bn_add_ub(const bn_t in1, uint8_t in2, bn_t out) {
   uint8_t remainder = 0;
   uint16_t temp = 0;
   uint32_t j = 1;
 
   //If the bignum is empty, just set the first block to be in2.
-  if(bn_isempty(in1)) {
+  if(bn_iszero(in1)) {
     bn_resize(out, 1);
     bn_setBlock(out, 0, in2);
     return;
@@ -170,6 +164,6 @@ void bn_add_byte(const bignum *in1, uint8_t in2, bignum *out) {
 }
 
 /*Increment num; num++*/
-void bn_add_1(bignum *num) {
-  bn_add_byte(num, 1, num);
+void bn_increment(bn_t num) {
+  bn_add_ub(num, 1, num);
 }

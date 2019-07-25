@@ -1,30 +1,49 @@
 #include "bignum.h"
 
-int8_t bn_div(const bignum *in1, const bignum *in2,
-              bignum *q, bignum *r) {
+static uint8_t bn_div_close(const bn_t, const bn_t, bn_t);
+
+int8_t bn_div(const bn_t in1, const bn_t in2,
+              bn_t q, bn_t r) {
   int8_t c;
 
   if(bn_iszero(in2)) {
-    printf("%sbn/bnDivision by 0!%s\n", RED, NORMAL);
+    //printf("%sbn/bnDivision by 0!%s\n", RED, NORMAL);
+    //TODO log and set errno
     return 0;
   }
   c = bn_compare(in1, in2);
 
   if(c == -1) { //if a<b, return (0, a)
-    bn_clone(q, &ZERO);
+    bn_setzero(q);
     bn_clone(r, in1);
     return 1;
   }
   if(c == 0) { //if a==b, return (1, 0)
-    bn_clone(q, &ONE);
-    bn_clone(r, &ZERO);
+    bn_clone(q, BN_ONE);
+    bn_setzero(r);
+    return 1;
+  }
+
+  if(bn_isnegative(in1)) {
+    //printf("Here\n");
+    bn_t n, rTemp;
+    bn_inits(2, &n, &rTemp);
+    bn_clone(n, in1);
+    bn_setpositive(n);
+    bn_div(n, in2, q, rTemp);
+    //printf("%B = %B*%B + %B\n", n, in2, q, rTemp);
+    bn_increment(q);
+    bn_setnegative(q);
+    bn_sub(in2, rTemp, r);
+    //printf("%B = %B*%B + %B\n", in1, in2, q, r);
+    bn_nukes(2, &n, &rTemp);
     return 1;
   }
 
   uint32_t len1 = bn_trueLength(in1);
   uint32_t len2 = bn_trueLength(in2);
 
-  bignum *quot, *rem;
+  bn_t quot, rem;
   bn_inits(2,&quot, &rem);
 
   bn_resize(quot, len1-len2+1);
@@ -37,7 +56,7 @@ int8_t bn_div(const bignum *in1, const bignum *in2,
     bn_setBlock(quot, len1-len2, 0);
   } else if(c==0) { // if they are equal, the first quotient is 1, with 0 remainder.
     bn_setBlock(quot, len1-len2, 1);
-    bn_clone(rem, &ZERO);
+    bn_clone(rem, BN_ZERO);
   } else { // otherwise, we divide them
     bn_setBlock(quot, len1-len2, bn_div_close(rem, in2, rem));
   }
@@ -52,7 +71,7 @@ int8_t bn_div(const bignum *in1, const bignum *in2,
       bn_setBlock(quot, len1-len2-i, 0);
     } else if(c==0) { // if the current blocks are equal to b, the quotient is 1, and remainder is 0
       bn_setBlock(quot, len1-len2-i, 1);
-      bn_clone(rem, &ZERO);
+      bn_clone(rem, BN_ZERO);
     } else {
       //Otherwise, we divide them
       bn_setBlock(quot, len1-len2-i, bn_div_close(rem, in2, rem));
@@ -67,7 +86,7 @@ int8_t bn_div(const bignum *in1, const bignum *in2,
   return 1;
 }
 
-uint8_t bn_div_close(const bignum *in1, const bignum *in2, bignum *remainder) {
+uint8_t bn_div_close(const bn_t in1, const bn_t in2, bn_t remainder) {
   int8_t c = 0;
   uint16_t q = 0;
 
@@ -83,7 +102,7 @@ uint8_t bn_div_close(const bignum *in1, const bignum *in2, bignum *remainder) {
   if(len1 > len2+1 ||
      (len1 == len2+1 && bn_getBlock(in1, len1-1) > bn_getBlock(in2, len2-1))) {
     //TODO what should we do here?
-    printf("%s This aint right %s \n", RED, NORMAL);
+    //printf("%s This aint right %s \n", RED, NORMAL);
     exit(1);
     return 0;
   }
@@ -94,13 +113,13 @@ uint8_t bn_div_close(const bignum *in1, const bignum *in2, bignum *remainder) {
     q+=bn_getBlock(in1, len1-1);
   }
 
-  bignum *r;
+  bn_t r;
   bn_init(&r);
 
   q/=bn_getBlock(in2, len2-1);
   //Compute r = a-qb
-  bn_mul_byte(in2, q, r);
-  bn_subtract(in1, r, r);
+  bn_mul_ub(in2, q, r);
+  bn_sub(in1, r, r);
 
   //If r<0, q is an over estimate for the quotient, so add copies of b to r until r>=0, and decrement q
   while(bn_isnegative(r)) {
@@ -114,7 +133,7 @@ uint8_t bn_div_close(const bignum *in1, const bignum *in2, bignum *remainder) {
   //If r>b, we need to reduce q until r<b, by subtracting copies of b
   c = bn_compare(r,in2);
   while(c>=0) {
-    bn_subtract(r, in2, r);
+    bn_sub(r, in2, r);
     q++;
     bn_removezeros(r);
     c = bn_compare(r, in2);
@@ -124,20 +143,20 @@ uint8_t bn_div_close(const bignum *in1, const bignum *in2, bignum *remainder) {
   return q;
 }
 
-void bn_div_rem(const bignum *in1, const bignum *in2, bignum *remainder) {
-  bignum *q;
+void bn_div_rem(const bn_t in1, const bn_t in2, bn_t remainder) {
+  bn_t q;
   bn_init(&q);
   bn_div(in1, in2, q, remainder);
   bn_nuke(&q);
 }
-void bn_div_quot(const bignum *in1, const bignum *in2, bignum *quotient) {
-  bignum *r;
+void bn_div_quot(const bn_t in1, const bn_t in2, bn_t quotient) {
+  bn_t r;
   bn_init(&r);
   bn_div(in1, in2, quotient, r);
   bn_nuke(&r);
 }
 
-void bn_div_2(bignum *num) {
+void bn_half(bn_t num) {
   uint8_t remainder = 0;
   uint16_t temp;
   uint32_t noBlocks = bn_length(num);
@@ -151,7 +170,7 @@ void bn_div_2(bignum *num) {
   bn_removezeros(num);
 }
 
-uint32_t bn_div_2s(bignum *num) {
+uint32_t bn_oddPart(bn_t num) {
   uint32_t no2s = 0;
   uint32_t noZeroBlocks = 0;
   uint32_t len = bn_trueLength(num);
@@ -165,7 +184,7 @@ uint32_t bn_div_2s(bignum *num) {
   bn_blockshift(num, -noZeroBlocks);
   no2s = noZeroBlocks*8;
   while(bn_iseven(num)) {
-    bn_div_2(num);
+    bn_half(num);
     no2s++;
   }
   return no2s;

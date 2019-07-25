@@ -1,15 +1,15 @@
 #include "bignum.h"
 
-void bn_powmod_int(const bignum *b, uint32_t e, const bignum *m, bignum *out) {
-  if(bn_equals(m, &ONE)) {
+void bn_powmod_int(const bn_t b, uint32_t e, const bn_t m, bn_t out) {
+  if(bn_equals(m, BN_ONE)) {
     bn_setzero(out);
     return;
   }
 
-  bignum *base, *result;
+  bn_t base, result;
   bn_inits(2, &base, &result);
   bn_clone(base, b);
-  bn_clone(result, &ONE);
+  bn_clone(result, BN_ONE);
 
   //printf("b = %B\nresult = %B\n", base, result);
 
@@ -32,12 +32,12 @@ void bn_powmod_int(const bignum *b, uint32_t e, const bignum *m, bignum *out) {
 
 }
 
-void bn_powmod(const bignum *b,
-               const bignum *e,
-               const bignum *m,
-               bignum *out) {
+void bn_powmod(const bn_t b,
+               const bn_t e,
+               const bn_t m,
+               bn_t out) {
 
-  if(bn_equals(m, &ONE)) {
+  if(bn_equals(m, BN_ONE)) {
     bn_setzero(out);
     return;
   }
@@ -48,10 +48,10 @@ void bn_powmod(const bignum *b,
   bnf_inits(2, &mod, &quot);
   bnf_invert(m, mod);*/
 
-  bignum *base, *result, *exponent, *q, *temp;
+  bn_t base, result, exponent, q, temp;
   bn_inits(5, &base, &result, &exponent, &q, &temp);
   bn_clone(base, b);
-  bn_clone(result, &ONE);
+  bn_clone(result, BN_ONE);
   bn_clone(exponent, e);
 
   /*if(bn_compare(base_1, m) > 0) {
@@ -83,7 +83,7 @@ void bn_powmod(const bignum *b,
       bn_div_rem(result, m, result);
     }
     loops++;
-    bn_div_2(exponent);
+    bn_half(exponent);
     //bn_mul(base_1, base_1, base_1);
     bn_mul(base, base, base);
 

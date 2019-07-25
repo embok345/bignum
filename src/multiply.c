@@ -1,8 +1,8 @@
 #include "bignum.h"
 
-void bn_mul_long(const bignum *, const bignum *, bignum *);
-void bn_mul_karat(const bignum *, const bignum *, bignum *);
-void bn_mul_tc3(const bignum *, const bignum *, bignum *);
+static void bn_mul_long(const bn_t, const bn_t, bn_t);
+static void bn_mul_karat(const bn_t, const bn_t, bn_t);
+static void bn_mul_tc3(const bn_t, const bn_t, bn_t);
 
 /* Multiplies the numbers in1 and in2, and stores it in out.
  * This method doesn't actually do any of the multiplying, it simply picks out
@@ -10,9 +10,10 @@ void bn_mul_tc3(const bignum *, const bignum *, bignum *);
  * line up, and the inputs are sorted.
  * ---------------------------------------------------------------------------
  */
-void bn_mul(const bignum *in1, const bignum *in2, bignum *out) {
+void bn_mul(const bn_t in1, const bn_t in2, bn_t out) {
 
   //printf("%"PRId8" * %"PRId8"\n", bn_getSign(in1), bn_getSign(in2));
+  LOG(BN_LOG, LOG_LEVEL_CRIT, "test");
 
   //If the second input is zero, the output is zero. (The inputs will be
   //swapped if the first is zero, so this always gets called eventually)
@@ -26,7 +27,7 @@ void bn_mul(const bignum *in1, const bignum *in2, bignum *out) {
 
   //If the first is smaller than the second, swap them over and recall
   if(len1<len2) {
-    //printf("swapped\n");
+    printf("swapped\n");
     bn_mul(in2, in1, out);
     return;
   }
@@ -37,10 +38,12 @@ void bn_mul(const bignum *in1, const bignum *in2, bignum *out) {
     //printf("long\n");
     bn_mul_long(in1, in2, out);
     //printf("%"PRId8", %"PRId8"\n", bn_getSign(in1), bn_getSign(in2));
-  } else {
-  //Otherwise, use karat mul.
+  } else if(len1 <= 1000 && len2 <= 1000) {
+    //Otherwise, use karat mul.
     //printf("karat\nin1 = %B\nin2 = %B\n", in1, in2);
     bn_mul_karat(in1, in2, out);
+  } else {
+    bn_mul_tc3(in1, in2, out);
   }
 
   //printf("done multiplaction\n");
@@ -61,7 +64,7 @@ void bn_mul(const bignum *in1, const bignum *in2, bignum *out) {
  * correct.
  * ---------------------------------------------------------------------------
  */
-void bn_mul_long(const bignum *in1, const bignum *in2, bignum *out) {
+static void bn_mul_long(const bn_t in1, const bn_t in2, bn_t out) {
 
   uint32_t len1 = bn_trueLength(in1);
   uint32_t len2 = bn_trueLength(in2);
@@ -71,7 +74,7 @@ void bn_mul_long(const bignum *in1, const bignum *in2, bignum *out) {
   //Resize the output to the sum of the lengths of the inputs.
   bn_resize(out, len1+len2);
 
-  bignum *mul, *add;
+  bn_t mul, add;
   bn_inits(2, &mul, &add);
 
   //printf("resize: %"PRId8"\n", bn_getSign(in2));
@@ -82,7 +85,7 @@ void bn_mul_long(const bignum *in1, const bignum *in2, bignum *out) {
       continue;
     }
     //Multiply in1 by the next block of in2
-    bn_mul_byte(in1, bn_getBlock(in2, i), mul);
+    bn_mul_ub(in1, bn_getBlock(in2, i), mul);
     //printf("%B * %"PRIu8" = %B\n", in1, bn_getBlock(in2, i),  mul);
     //Add this two the working number
     //printf("%B + %B = ", mul, add);
@@ -98,7 +101,7 @@ void bn_mul_long(const bignum *in1, const bignum *in2, bignum *out) {
   //and store it into out.
   if(bn_getBlock(in2, 0) != 0) {
     //printf("final multiply start: %"PRId8"\n", bn_getSign(in2));
-    bn_mul_byte(in1, bn_getBlock(in2, 0), mul);
+    bn_mul_ub(in1, bn_getBlock(in2, 0), mul);
     //printf("after multiply: %"PRId8"\n", bn_getSign(in2));
     //printf("%"PRId8", %"PRId8"\n", bn_getSign(mul), bn_getSign(add));
     bn_add(mul, add, out);
@@ -119,7 +122,7 @@ void bn_mul_long(const bignum *in1, const bignum *in2, bignum *out) {
  * should be correct.
  * ---------------------------------------------------------------------------
  */
-void bn_mul_karat(const bignum *in1, const bignum *in2, bignum *out) {
+void bn_mul_karat(const bn_t in1, const bn_t in2, bn_t out) {
 
   uint32_t len1 = bn_trueLength(in1);
   uint32_t len2 = bn_trueLength(in2);
@@ -127,9 +130,9 @@ void bn_mul_karat(const bignum *in1, const bignum *in2, bignum *out) {
   //m = Half the length of the longer number (should be in1)
   uint32_t m = ceil((float)bn_max_ui(len1, len2)/2);
 
-  bignum *z[3];
-  bignum *up[2], *down[2];
-  bignum *t1, *t2;
+  bn_t z[3];
+  bn_t up[2], down[2];
+  bn_t t1, t2;
 
   bn_inits(9,&z[0],&z[1],&z[2],&up[0],&up[1],&down[0],&down[1],&t1,&t2);
 
@@ -157,8 +160,8 @@ void bn_mul_karat(const bignum *in1, const bignum *in2, bignum *out) {
   bn_add(up[0], down[0], t1);
   bn_add(up[1], down[1], t2);
   bn_mul(t1, t2, z[1]);
-  bn_subtract(z[1], z[0], z[1]);
-  bn_subtract(z[1], z[2], z[1]);
+  bn_sub(z[1], z[0], z[1]);
+  bn_sub(z[1], z[2], z[1]);
 
   //printf("Done middles\n");
 
@@ -179,8 +182,12 @@ void bn_mul_karat(const bignum *in1, const bignum *in2, bignum *out) {
   bn_nukes(9,&up[0],&up[1],&down[0],&down[1],&t1,&t2,&z[0],&z[1],&z[2]);
 }
 
+void bn_mul_tc3(const bn_t in1, const bn_t in2, bn_t out) {
+  bn_mul_karat(in1, in2, out);
+}
+
 /* Multiply the bignum in1 by the byte in2, and store the result in out */
-void bn_mul_byte(const bignum *in1, uint8_t in2, bignum *out) {
+void bn_mul_ub(const bn_t in1, uint8_t in2, bn_t out) {
   //If either input is zero, the output is zero
   if(in2 == 0 || bn_iszero(in1)) {
     bn_setzero(out);

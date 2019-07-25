@@ -1,6 +1,7 @@
+#include <stdio.h>
 #include "bignum.h"
 
-void bn_prnt_blocks(const bignum *num) {
+void bn_prnt_blocks(const bn_t num) {
   if(bn_isempty(num)) {
     printf("Bignum is empty\n");
     return;
@@ -11,8 +12,19 @@ void bn_prnt_blocks(const bignum *num) {
   }
   printf("%"PRIu8"\n", bn_getBlock(num, 0));
 }
+void bn_prnt_blocks_hex(const bn_t num) {
+ if(bn_isempty(num)) {
+    printf("Bignum is empty\n");
+    return;
+  }
+  uint32_t len = bn_length(num);
+  for(uint32_t i = len-1; i>0; i--) {
+    printf("%x ", bn_getBlock(num, i));
+  }
+  printf("%x\n", bn_getBlock(num, 0));
+}
 
-void bn_prnt_dec(const bignum *num) {
+void bn_prnt_dec(const bn_t num) {
   if(bn_isempty(num)) {
     printf("Bignum is empty\n");
     return;
@@ -26,11 +38,10 @@ void bn_prnt_dec(const bignum *num) {
 int bn_printf(FILE *stream,
               const struct printf_info *info,
               const void *const *args) {
-  const bignum *num;
   char *buffer;
   int len;
+  const bn_t num = *((const bn_t *) (args[0]));
 
-  num = *((const bignum **) (args[0]));
   buffer = bn_conv_bn2str(num);
   len = strlen(buffer);
 

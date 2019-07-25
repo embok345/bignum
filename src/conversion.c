@@ -1,10 +1,14 @@
 #include "bignum.h"
 
+int8_t isdigit_str(const char *);
+void bn_str_mul256(char *, char *);
+void bn_str_add(char *, char *, char *);
+
 /* Converts a bignum into a string. The string can be freed later, in the
  * calling function. This function is probably woefully inefficient.
  * ---------------------------------------------------------------------------
  */
-char *bn_conv_bn2str(const bignum *num) {
+char *bn_conv_bn2str(const bn_t num) {
 
   char *out, *x, *temp, *workStr = (char *)malloc(3);
   workStr[0]='\0';
@@ -62,10 +66,10 @@ char *bn_conv_bn2str(const bignum *num) {
   return out;
 }
 
-void bn_conv_str2bn(const char* str, bignum *num) {
+void bn_conv_str2bn(const char* str, bn_t num) {
   uint32_t len = strlen(str);
 
-  bn_clone(num, &ZERO);
+  bn_setzero(num);
 
   if(!isdigit_str(str)) {
     //TODO return something better than this.
@@ -78,18 +82,18 @@ void bn_conv_str2bn(const char* str, bignum *num) {
       continue;
     }
     //Add the next digit to num
-    bn_add_byte(num, str[i]-48, num);
+    bn_add_ub(num, str[i]-48, num);
     //Multiply out by 10
-    bn_mul_byte(num, 10, num);
+    bn_mul_ub(num, 10, num);
     //bn_prnt_blocks(num);
   }
   //bn_prnt_blocks(num);
   //printf("%"PRIu8"\n", str[len-1]-48);
-  bn_add_byte(num, str[len-1]-48, num);
+  bn_add_ub(num, str[len-1]-48, num);
   //bn_prnt_blocks(num);
 }
 
-uint32_t bn_conv_bn2int(const bignum *in) {
+uint32_t bn_conv_bn2ui(const bn_t in) {
   uint32_t out = 0;
   for(int i=0; i<bn_min_ui(4,bn_length(in)); i++) {
     out>>=8;
@@ -98,17 +102,18 @@ uint32_t bn_conv_bn2int(const bignum *in) {
   return out;
 }
 
-void bn_conv_int2bn(uint32_t in, bignum *out) {
-  uint8_t blocks[4];
-  blocks[0] = in%256;
-  blocks[1] = (in>>8)%256;
-  blocks[2] = (in>>16)%256;
-  blocks[3] = (in>>24)%256;
-  bn_set(out, 4, blocks, 1);
+void bn_conv_ui2bn(uint32_t in, bn_t out) {
+  bn_resize(out, 4);
+
+  bn_setBlock(out, 0, in%256);
+  bn_setBlock(out, 1, (in>>8)%256);
+  bn_setBlock(out, 2, (in>>16)%256);
+  bn_setBlock(out, 3, (in>>24)%256);
+
   bn_removezeros(out);
 }
 
-void bn_conv_byte2bn(uint8_t in, bignum *out) {
-  uint8_t blocks[1] = {in};
-  bn_set(out, 1, blocks, 1);
+void bn_conv_ub2bn(uint8_t in, bn_t out) {
+  bn_resize(out, 1);
+  bn_setBlock(out, 0, in);
 }

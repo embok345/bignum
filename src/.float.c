@@ -1,398 +1,247 @@
 #include "bignum.h"
 
-void bn_float_init(bn_float_t *in) {
-	bn_init(&(*in).n, 1);
-	(*in).a = 0;
-}
-void bn_float_destroy(bn_float_t *in) {
-	bn_destroy(&(*in).n);
-	(*in).a = 0;
-}
+const uint16_t B = 256;
 
-bn_float_t bn_float_add(bn_float_t a, bn_float_t b) {
-	bn_float_t out;
-	int64_t f = bn_min_sl(a.a, b.a);
-	
-	out.a = f;
-	
-	bignum temp1, temp2;
-	
-	bn_copy(&temp1, a.n);
-	bn_removezeros(&temp1);
-	bn_bitshift(&temp1, a.a-f);
-	
-	bn_copy(&temp2, b.n);
-	bn_removezeros(&temp2);
-	bn_bitshift(&temp2, b.a-f);
-	
-	out.n = bn_add(temp1, temp2);
-	
-	bn_destroy(&temp1);
-	bn_destroy(&temp2);
-	
-	while(bn_iseven(out.n) && !bn_equals(out.n, ZERO)) {
-		out.a++;
-		bn_div_2(&out.n);
-	}
-	
-	return out;
-}
+//999 blocks for the number 1/67073
+const int32_t NR_INIT_D_E = 999;
+const uint8_t NR_INIT_D_BLOCKS[] =
+{9, 42, 250, 248, 47, 231, 100, 187, 54, 252, 223, 195, 136, 7, 74,
+60, 76, 250, 213, 1, 31, 68, 72, 10, 122, 25, 237, 87, 3, 148, 132,
+80, 152, 29, 182, 157, 151, 212, 108, 158, 220, 53, 224, 136, 234,
+247, 69, 100, 96, 89, 135, 122, 153, 236, 218, 241, 121, 50, 87, 194,
+26, 157, 54, 27, 38, 0, 217, 233, 171, 14, 252, 8, 206, 34, 97, 150,
+24, 214, 226, 216, 7, 248, 39, 24, 71, 61, 73, 11, 115, 66, 254, 199,
+81, 77, 222, 124, 52, 72, 26, 26, 73, 47, 155, 45, 83, 223, 112, 123,
+170, 133, 51, 69, 45, 171, 207, 118, 103, 28, 238, 78, 56, 95, 140,
+86, 108, 31, 215, 213, 37, 71, 47, 157, 33, 153, 71, 185, 96, 2, 145,
+151, 225, 30, 101, 130, 140, 50, 68, 52, 130, 190, 6, 25, 99, 148,
+34, 156, 52, 40, 218, 186, 196, 168, 70, 175, 157, 158, 170, 97, 11,
+90, 216, 147, 176, 72, 155, 19, 239, 81, 37, 206, 5, 15, 160, 48, 60,
+102, 94, 99, 77, 204, 232, 190, 157, 142, 10, 50, 201, 22, 174, 212,
+85, 40, 184, 134, 31, 188, 119, 117, 199, 221, 5, 255, 255, 0, 250,
+34, 52, 164, 242, 171, 5, 50, 206, 248, 92, 217, 138, 229, 19, 163,
+25, 195, 83, 70, 6, 148, 129, 98, 47, 129, 201, 197, 147, 195, 214,
+51, 242, 30, 84, 232, 57, 188, 92, 23, 23, 94, 180, 103, 221, 103,
+179, 99, 246, 213, 5, 7, 208, 24, 155, 68, 201, 3, 32, 60, 119, 248,
+181, 195, 179, 5, 42, 254, 224, 187, 183, 245, 133, 230, 18, 168,
+252, 107, 123, 175, 103, 226, 73, 98, 104, 43, 147, 97, 35, 202, 31,
+119, 21, 8, 186, 155, 159, 166, 120, 133, 102, 19, 37, 14, 134, 205,
+168, 61, 229, 98, 201, 228, 217, 255, 38, 22, 84, 241, 3, 247, 49,
+221, 158, 105, 231, 41, 29, 39, 248, 7, 216, 231, 184, 194, 182, 244,
+140, 189, 1, 56, 174, 178, 33, 131, 203, 183, 229, 229, 182, 208,
+100, 210, 172, 32, 143, 132, 85, 122, 204, 186, 210, 84, 48, 137,
+152, 227, 17, 177, 199, 160, 115, 169, 147, 224, 40, 42, 218, 184,
+208, 98, 222, 102, 184, 70, 159, 253, 110, 104, 30, 225, 154, 125,
+115, 205, 187, 203, 125, 65, 249, 230, 156, 107, 221, 99, 203, 215,
+37, 69, 59, 87, 185, 80, 98, 97, 85, 158, 244, 165, 39, 108, 79, 183,
+100, 236, 16, 174, 218, 49, 250, 240, 95, 207, 195, 153, 161, 156,
+178, 51, 23, 65, 98, 113, 245, 205, 54, 233, 81, 43, 170, 215, 71,
+121, 224, 67, 136, 138, 56, 34, 250, 0, 0, 255, 5, 221, 203, 91, 13,
+84, 250, 205, 49, 7, 163, 38, 117, 26, 236, 92, 230, 60, 172, 185,
+249, 107, 126, 157, 208, 126, 54, 58, 108, 60, 41, 204, 13, 225, 171,
+23, 198, 67, 163, 232, 232, 161, 75, 152, 34, 152, 76, 156, 9, 42,
+250, 248, 47, 231, 100, 187, 54, 252, 223, 195, 136, 7, 74, 60, 76,
+250, 213, 1, 31, 68, 72, 10, 122, 25, 237, 87, 3, 148, 132, 80, 152,
+29, 182, 157, 151, 212, 108, 158, 220, 53, 224, 136, 234, 247, 69,
+100, 96, 89, 135, 122, 153, 236, 218, 241, 121, 50, 87, 194, 26, 157,
+54, 27, 38, 0, 217, 233, 171, 14, 252, 8, 206, 34, 97, 150, 24, 214,
+226, 216, 7, 248, 39, 24, 71, 61, 73, 11, 115, 66, 254, 199, 81, 77,
+222, 124, 52, 72, 26, 26, 73, 47, 155, 45, 83, 223, 112, 123, 170,
+133, 51, 69, 45, 171, 207, 118, 103, 28, 238, 78, 56, 95, 140, 86,
+108, 31, 215, 213, 37, 71, 47, 157, 33, 153, 71, 185, 96, 2, 145,
+151, 225, 30, 101, 130, 140, 50, 68, 52, 130, 190, 6, 25, 99, 148,
+34, 156, 52, 40, 218, 186, 196, 168, 70, 175, 157, 158, 170, 97, 11,
+90, 216, 147, 176, 72, 155, 19, 239, 81, 37, 206, 5, 15, 160, 48, 60,
+102, 94, 99, 77, 204, 232, 190, 157, 142, 10, 50, 201, 22, 174, 212,
+85, 40, 184, 134, 31, 188, 119, 117, 199, 221, 5, 255, 255, 0, 250,
+34, 52, 164, 242, 171, 5, 50, 206, 248, 92, 217, 138, 229, 19, 163,
+25, 195, 83, 70, 6, 148, 129, 98, 47, 129, 201, 197, 147, 195, 214,
+51, 242, 30, 84, 232, 57, 188, 92, 23, 23, 94, 180, 103, 221, 103,
+179, 99, 246, 213, 5, 7, 208, 24, 155, 68, 201, 3, 32, 60, 119, 248,
+181, 195, 179, 5, 42, 254, 224, 187, 183, 245, 133, 230, 18, 168,
+252, 107, 123, 175, 103, 226, 73, 98, 104, 43, 147, 97, 35, 202, 31,
+119, 21, 8, 186, 155, 159, 166, 120, 133, 102, 19, 37, 14, 134, 205,
+168, 61, 229, 98, 201, 228, 217, 255, 38, 22, 84, 241, 3, 247, 49,
+221, 158, 105, 231, 41, 29, 39, 248, 7, 216, 231, 184, 194, 182, 244,
+140, 189, 1, 56, 174, 178, 33, 131, 203, 183, 229, 229, 182, 208,
+100, 210, 172, 32, 143, 132, 85, 122, 204, 186, 210, 84, 48, 137,
+152, 227, 17, 177, 199, 160, 115, 169, 147, 224, 40, 42, 218, 184,
+208, 98, 222, 102, 184, 70, 159, 253, 110, 104, 30, 225, 154, 125,
+115, 205, 187, 203, 125, 65, 249, 230, 156, 107, 221, 99, 203, 215,
+37, 69, 59, 87, 185, 80, 98, 97, 85, 158, 244, 165, 39, 108, 79, 183,
+100, 236, 16, 174, 218, 49, 250, 240, 95, 207, 195, 153, 161, 156,
+178, 51, 23, 65, 98, 113, 245, 205, 54, 233, 81, 43, 170, 215, 71,
+121, 224, 67, 136, 138, 56, 34, 250, 0, 0};
 
-bn_float_t bn_float_sub(bn_float_t a, bn_float_t b) {
-	bn_float_t out;
-	int64_t f = bn_min_sl(a.a, b.a);
-	out.a = f;
-	
-	bignum temp1, temp2;
-	
-	bn_copy(&temp1, a.n);
-	bn_removezeros(&temp1);
-	bn_copy(&temp2, b.n);
-	bn_removezeros(&temp2);
-	
-	bn_bitshift(&temp1, a.a-f);
-	bn_bitshift(&temp2, b.a-f);
-	
-	out.n = bn_subtract(temp1, temp2);
 
-	bn_destroy(&temp1);
-	bn_destroy(&temp2);
-	
-	while(bn_iseven(out.n) && !bn_equals(out.n, ZERO)) {
-		out.a++;
-		bn_div_2(&out.n);
-	}
-	
-	return out;
-}
+//Stores the number m*256^e
+struct bn_float {
+  bn_t m;
+  int32_t e;
+};
 
-bn_float_t bn_float_mul(const bn_float_t a, const bn_float_t b) {
-	bn_float_t out;
-	out.n = bn_mul(a.n, b.n);
-	out.a = a.a+b.a;
-	while(bn_iseven(out.n) && !bn_equals(out.n, ZERO)) {
-		out.a++;
-		bn_div_2(&out.n);
-	}
-	return out;
-}
-
-bn_float_t bn_float_trunc(const bn_float_t r, uint32_t b) {
-	bn_float_t out;
-	//printf("trunc start\n");
-	out = bn_float_divb(r, 1, b);
-	//printf("trunc end\n");
-	return out;
-}
-
-bn_float_t bn_float_divb(const bn_float_t r, uint32_t k, uint32_t b) {
-	bn_float_t out;
-	uint64_t f;
-	
-	f = bn_log2(r.n)+1;
-
-	out.a = r.a+f-(uint32_t)ceil(log2(k))-b;
-	
-	out.n = bn_div_intq(r.n, k);
-		
-	bn_bitshift(&out.n, -f+(uint32_t)ceil(log2(k))+b);
-	
-	return out;
+void bnf_init(bn_float **a) {
+  *a = malloc(sizeof(bn_float));
+  bn_init(&((*a)->m));
+  (*a)->e = 0;
 }
 
-bn_float_t bn_float_powb(const bn_float_t r, uint32_t k, uint32_t b) {
-	bn_float_t out, temp, temp2;
-	
-	//printf("powb start\n");
-	//printf("k = %"PRIu32", b = %"PRIu32"\n", k, b);
-	
-	if(k == 1) {
-		//printf("powb k=1\n");
-		out = bn_float_trunc(r, b);
-		//printf("powb k=1 done\n");
-		return out;
-	} else if(k%2 == 0) {
-		//printf("powb k even\n");
-		out = bn_float_powb(r, k/2, b);
-		//printf("powb even powb done\n");
-		temp = bn_float_mul(out, out);
-		//printf("powb even mul done\n");
-		bn_float_destroy(&out);
-		out = bn_float_trunc(temp, b);
-		//printf("powb even trunc done\n");
-		bn_float_destroy(&temp);
-		return out;
-	} else {
-		//printf("powb k odd\n");
-		out = bn_float_powb(r, k-1, b);
-		temp = bn_float_trunc(r, b);
-		temp2 = bn_float_mul(out, temp);
-		bn_float_destroy(&out);
-		out = bn_float_trunc(temp2, b);
-		bn_float_destroy(&temp);
-		bn_float_destroy(&temp2);
-		//printf("powb k odd done\n");
-		return out;
-	}
+void bnf_inits(int num, ...) {
+  va_list list;
+  va_start(list, num);
+  for(int i=0; i<num; i++) {
+    bnf_init(va_arg(list, bn_float**));
+  }
+  va_end(list);
 }
 
-bn_float_t bn_float_nrootb(const bn_float_t y, uint32_t k, uint32_t b) {
-	if(b>ceil(log2(8*k))) {
-		//printf("big\n");
-		return bn_float_nrootb2(y, k, b);
-	}
-	
-	//printf("Small\n");
-	
-	bn_float_t z, r, temp1, temp2, temp3, lower, upper;
-	int32_t g, a, B;
-	
-	lower.a = -10;
-	lower.n = bn_conv_int2bn(993);
-	upper.a = 0;
-	bn_copy(&(upper.n), ONE);
-	
-	g = bn_log2(y.n);
-	if(!bn_ispowerof2(y.n)) {
-		g++;	
-	}
-	g+=y.a;
-	
-	a = (int32_t)floor(-(double)g/k);
-	B = (int32_t)ceil(log2(66*((2*k)+1)));
-	
-	//Define 2^a and 2^a-1, and set z = 2^a + 2^a-1
-	temp1.a = a;
-	bn_copy(&temp1.n, ONE);
-	temp2.a = a-1;
-	bn_copy(&temp2.n, ONE);
-	
-	z = bn_float_add(temp1, temp2);
-	
-	//printf("z = (%"PRId64", %s)\n", z.a, bn_conv_bn2str(z.n));
-	
-	bn_destroy_float(&temp1);
-	bn_destroy_float(&temp2);
-	
-	//printf("%"PRIu32"\n", b);
-	
-	for(uint32_t j = 1; j<b; j++) {
-		//printf("%"PRIu32"\n", j);
-		temp1 = bn_float_powb(z, k, B);
-		temp2 = bn_float_trunc(y, B);
-		temp3 = bn_float_mul(temp1, temp2);	
-	    r = bn_float_trunc(temp3, B);
-	    bn_destroy_float(&temp1);
-	    bn_destroy_float(&temp2);
-	    bn_destroy_float(&temp3);
-	    if(bn_compare_float(r, lower)<=0) {
-	    	//printf("lower\n");
-	    	temp1.a = (int64_t)a-j-1;
-	    	bn_copy(&temp1.n, ONE);
-	    	temp2 = bn_float_add(z, temp1);
-	    	bn_destroy_float(&z);
-	    	bn_copy_float(&z, temp2);
-	    	bn_destroy_float(&temp1);
-	  		bn_destroy_float(&temp2);
-	    } else if(bn_compare_float(r, upper) == 1){
-	    	//printf("upper\n");
-	    	temp1.a = (int64_t)a-j-1;
-	    	bn_copy(&temp1.n, ONE);
-	    	temp2 = bn_float_sub(z, temp1);
-	    	bn_destroy_float(&z);
-	    	bn_copy_float(&z, temp2);
-	    	bn_destroy_float(&temp1);
-	    	bn_destroy_float(&temp2);
-	    }
-	    bn_destroy_float(&r);
-	}
-	
-	//printf("done\n");
-	
-	bn_destroy_float(&lower);
-	bn_destroy_float(&upper);
-	
-	//printf("Small done\n");
-	
-	return z;
+void bnf_nuke(bn_float **a) {
+  if(a) {
+    bn_nuke(&((*a)->m));
+    free(a);
+  }
+  a = NULL;
 }
 
-bn_float_t bn_float_nrootb2(const bn_float_t y, uint32_t k, uint32_t b) {
-	if(b<=ceil(log2(8*k))) {
-		//printf("small\n");
-		return bn_float_nrootb(y, k, b);
-	}
-	
-	//printf("Big\n");
-	
-	//printf("b = %"PRIu32"\n", b);
-	b = ceil(log2(k*2)) + ceil((b-ceil(log2(k*2)))/2);
-	//printf("b' = %"PRIu32"\n", b);
-	uint32_t B = b*2 + 4 - ceil(log2(k));
-	
-	bn_float_t z = bn_float_nrootb(y, k, b);
-	
-	//r2 = trunc(z, B) * (k+1)
-	bn_float_t r2 = bn_float_trunc(z, B);
-	bignum tempbn1 = bn_conv_int2bn(k+1);
-	bignum tempbn2 = bn_mul(r2.n, tempbn1);
-	bn_destroy(&(r2.n));
-	bn_copy(&r2.n, tempbn2);
-	bn_destroy(&tempbn1);
-	bn_destroy(&tempbn2);
-	
-	//r3 = trunc(pow(z, k+1, B)*trunc(y, B), B)
-	//printf("r3 start\n");
-	bn_float_t temp1 = bn_float_powb(z, k+1, B);
-	//printf("r3 powb\n");
-	bn_float_t temp2 = bn_float_trunc(y, B);
-	//printf("r3 trunc\n");
-	bn_float_t temp3 = bn_float_mul(temp1, temp2);
-	//printf("r3 mul\n");
-	bn_float_t r3 = bn_float_trunc(temp3, B);
-	//printf("r3 end\n");
-	
-	bn_destroy_float(&temp1);
-	bn_destroy_float(&temp2);
-	bn_destroy_float(&temp3);
-	
-	temp1=bn_float_sub(r2, r3);
-	bn_float_t r4 = bn_float_divb(temp1, k, B);
-	//printf("r4\n");
-	
-	bn_destroy_float(&temp1);
-	bn_destroy_float(&r2);
-	bn_destroy_float(&r3);
-	bn_destroy_float(&z);
-	
-	//printf("(%"PRId64", %s)\n", r4.a, bn_conv_bn2str(r4.n));
-	//printf("Big done\n");
-	
-	return r4;
+void bnf_nukes(int num,...) {
+  va_list list;
+  va_start(list, num);
+  for(int i=0; i<num; i++) {
+    bnf_nuke(va_arg(list, bn_float **));
+  }
+  va_end(list);
 }
 
-int8_t bn_ispower_check(bignum n, bignum x, uint32_t k) {
-	uint32_t f = bn_log2(n) + 1;
-	int8_t ret = 0;
-	uint32_t b = 1;
-	bn_float_t nf, xf, r, temp1, temp2;
-	bn_copy(&nf.n, n);
-	bn_copy(&xf.n, x);
-	nf.a = 0;
-	xf.a = 0;
-	while(1) {
-		r = bn_float_powb(xf, k, b+ceil(log2(8*k)));
-		if(bn_compare_float(nf, r) == -1) {
-			ret = -1;
-			break;
-		}
-		
-		bn_copy_float(&temp1, r);
-		temp1.a-=b;
-		temp2 = bn_float_add(r, temp1);
-		if(bn_compare_float(temp2, nf) <= 0) {
-			ret = 1;
-			bn_destroy_float(&temp1);
-			bn_destroy_float(&temp2);
-			break;
-		}
-		
-		bn_destroy_float(&temp1);
-		bn_destroy_float(&temp2);
-		
-		if(b>=f) {
-			ret = 0;
-			break;
-		}
-		b = bn_min_ui(2*b, f);
-		bn_destroy_float(&r);
-	}
-	
-	bn_destroy_float(&r);
-	bn_destroy_float(&xf);
-	bn_destroy_float(&nf);
-	
-	return ret;
-	
+void bnf_bn2bnf(const bn_t in, bn_float *out) {
+  out->e = 0;
+  bn_clone(out->m, in);
 }
 
-bignum bn_root_k(bignum n, bn_float_t y, uint32_t k) {
-	uint32_t f = bn_log2(n);
-	uint32_t b = 4+(f/k);
-	
-	//printf("f = %"PRIu32"\n", f);
-	
-	bn_float_t r = bn_float_nrootb(y, k, b);
-	
-	//printf("Here\n");
-	
-	bignum x;
-	bn_copy(&x, r.n);
-	bn_bitshift(&x, r.a);
-	
-	//printf("x = %s\n", bn_conv_bn2str(x));
-	
-	if(bn_equals(x, ZERO)) {
-		//printf("x = 0\n");
-		bn_destroy_float(&r);
-		return x;
-	}
-	
-	bn_float_t xf;
-	xf.a = 0;
-	bn_copy(&xf.n, x);
-	bn_float_t temp = bn_float_sub(r, xf);
-	
-	bn_destroy_float(&xf);
-	bn_destroy_float(&r);
-	
-	bn_float_t quarter;
-	bn_copy(&quarter.n, ONE);
-	quarter.a = -2;
-	if(bn_compare_float(temp, quarter)<0) {
-		int8_t sign = bn_ispower_check(n, x, k);
-		if(sign == 0) {
-			bn_destroy_float(&quarter);
-			bn_destroy_float(&temp);
-			return x;
-		}
-	}
-	
-	bn_destroy_float(&quarter);
-	bn_destroy_float(&temp);
-	bn_destroy(&x);
-	bn_copy(&x, ZERO);
-	return x;
-	
+void bnf_clone(bn_float *out, const bn_float *in) {
+  out->e = in->e;
+  bn_clone(out->m, in->m);
 }
 
-//Sometimes works sometimes doesn't. ¯\_(ツ)_/¯
-int8_t bn_ispower(bignum n) {
-	uint32_t f = bn_log2(n)+1;
-	bignum x;
-	bn_float_t nf;
-	bn_copy(&nf.n, n);
-	nf.a = 0;
-	bn_float_t y = bn_float_nrootb(nf, 1, 4+(f/2));
-	uint32_t *primes;
-	uint32_t noPrimes =0;
-	noPrimes = bn_int_eratosthenes(f, &primes);
-	//printf("%"PRIu32"\n", noPrimes);
-	for(uint32_t i = 0; i<noPrimes; i++) {
-		x = bn_root_k(n, y, primes[i]);
-		if(!bn_equals(x, ZERO)) {
-			printf("%"PRIu32", ", primes[i]);bn_prnt_dec(x);
-			bn_destroy(&x);
-			bn_destroy_float(&y);
-			bn_destroy_float(&nf);
-			free(primes);
-			return 1;
-		}
-		bn_destroy(&x);
-	}
-	printf("1, ");bn_prnt_dec(ZERO);
-	free(primes);
-	bn_destroy_float(&y);
-	bn_destroy_float(&nf);
-	return 0;
+int8_t bnf_equals(const bn_float *a, const bn_float *b) {
+  return bn_equals(a->m, b->m) && (a->e == b->e);
+}
+
+void bnf_prnt(const bn_float *in) {
+  printf("%B * %"PRIu16"^%"PRId32"\n", in->m, B, in->e);
+}
+void bnf_prnt_blocks(const bn_float *in) {
+  printf("%"PRIu16" ^ %"PRId32" * ", B, in->e);bn_prnt_blocks(in->m);
+}
+
+void bnf_add(const bn_float *in1, const bn_float *in2, bn_float *out) {
+  if(in1->e < in2->e) {
+    bnf_add(in2, in1, out);
+    return;
+  }
+  int32_t k = in1->e - in2->e;
+  bn_t new_m;
+  bn_init(&new_m);
+  bn_clone(new_m, in1->m);
+  bn_blockshift(new_m, k);
+  bn_add(new_m, in2->m, new_m);
+  bn_nuke(&(out->m));
+  out->m = new_m;
+  out->e = in2->e;
+}
+
+void bnf_mul(const bn_float *a, const bn_float *b, bn_float *c) {
+  //printf("a = %B\nb = %B\n", a->m, b->m);
+  bn_mul(a->m, b->m, c->m);
+  c->e = a->e + b->e;
+}
+
+void bnf_mul_bn(const bn_float *a, const bn_t b, bn_float *c) {
+  //printf("a\n");
+  bn_float *temp;
+  //printf("b\n");
+  bnf_init(&temp);
+  //printf("c\n");
+  bnf_bn2bnf(b, temp);
+  //printf("d\n");
+  //bnf_prnt(temp);
+  bnf_mul(a, temp, c);
+  //bnf_prnt(c);
+  //printf("e\n");
+  //bnf_nuke(&temp);//Why doesn't it like this?
+  //printf("f\n");
+}
+
+void bnf_integerPart(const bn_float *in, bn_t out) {
+  bn_clone(out, in->m);
+  //printf("cloned\n");
+  bn_blockshift(out, in->e);
+  //printf("shifted\n");
+}
+
+void bnf_invert(const bn_t D, bn_float *out) {
+  bn_float *x, *new_x, *d, *o, *temp1, *temp2, *temp3, *init_d, *t1, *t2;
+  bnf_inits(10, &x, &new_x, &d, &o, &temp1, &temp2, &temp3, &init_d, &t1, &t2);
+  uint32_t n = bn_trueLength(D)+2;
+
+  bn_t init_d_b, t1_n, t2_n;
+  bn_inits(3, &init_d_b, &t1_n, &t2_n);
+  bn_conv_ui2bn(526336, t1_n);
+  bn_conv_ui2bn(524288, t2_n);
+
+  if(n > NR_INIT_D_E) n = NR_INIT_D_E;
+  if(n<4) n=4;
+
+  bn_set(init_d_b, n, NR_INIT_D_BLOCKS + (NR_INIT_D_E-n), 1);
+  init_d->m = init_d_b;
+  init_d->e = -n;
+  bnf_bn2bnf(t1_n, t1);
+  bnf_bn2bnf(t2_n, t2);
+
+  bnf_mul(init_d, t1, t1);
+  bnf_mul(init_d, t2, t2);
+
+  bnf_bn2bnf(BN_ONE, o);
+  bnf_bn2bnf(D, d);
+  d->e = -bn_trueLength(D);
+
+  bn_signSwap(d->m);
+  //printf("d=");bnf_prnt(d);
+  bnf_mul(t2, d, x);
+  //printf("c2*d=");bnf_prnt(x);
+  bnf_add(t1, x, x);
+  //printf("c1 - c2*d=");bnf_prnt(x);
+  //printf("\n");
+
+  for(int i=0; i<100; i++) {
+    bnf_mul(d, x, temp1);
+    //printf("-d*x = ");bnf_prnt(temp1);
+    bnf_add(o, temp1, temp2);
+    //printf("1-d*x = ");bnf_prnt(temp2);
+    bnf_mul(x, temp2, temp3);
+    //printf("x*(1-d*x) = ");bnf_prnt(temp3);
+    bnf_add(x, temp3, new_x);
+    //printf("x + x*(1-d*x) = ");bnf_prnt(x);
+
+    //uint32_t newLen = bn_trueLength(x->m)+2;
+    uint32_t newLen = bn_trueLength(new_x->m) + 2;
+
+    if(newLen > n+2) {
+      //bn_blockshift(x->m, n-newLen+2);
+      bn_blockshift(new_x->m, n-newLen+2);
+      //x->e += newLen - n - 2;
+      new_x->e += newLen - n - 2;
+    }
+    if(bnf_equals(new_x, x)) {
+      bnf_clone(x, new_x);
+      //printf("Reached stability\n");
+      break;
+    }
+    bnf_clone(x, new_x);
+
+    //printf("trunc x = ");bnf_prnt(x);
+    //printf("\n");
+  }
+  x->e -= bn_trueLength(D);
+  //printf("1/D = ");bnf_prnt(x);
+  bnf_clone(out, x);
 }
