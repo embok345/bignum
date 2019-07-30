@@ -1,5 +1,8 @@
 #include "bignum.h"
 
+int8_t bn_add_abs(const bn_t, const bn_t, bn_t);
+int8_t bn_sub_abs(const bn_t, const bn_t, bn_t);
+
 void bn_sub(const bn_t in1, const bn_t in2, bn_t out) {
   if(bn_ispositive(in1) && bn_isnegative(in2)) {
     bn_add_abs(in1, in2, out);
@@ -22,18 +25,18 @@ void bn_decrement(bn_t in1) {
 }
 
 /*Signs are ignored. just do |in1|-|in2| */
-void bn_sub_abs(const bn_t in1, const bn_t in2, bn_t out) {
+int8_t bn_sub_abs(const bn_t in1, const bn_t in2, bn_t out) {
   int8_t c = bn_compare(in1, in2);
 
   //if |in1|<|in2|, do the opposite, and make the result negative
   if(c==-1) {
     bn_sub_abs(in2, in1, out);
     bn_setnegative(out);
-    return;
+    return 1;
   }
   if(c==0) {
     bn_setzero(out);
-    return;
+    return 1;
   }
 
   uint32_t len = bn_trueLength(in1);
@@ -57,4 +60,7 @@ void bn_sub_abs(const bn_t in1, const bn_t in2, bn_t out) {
 
   bn_removezeros(out);
   bn_setpositive(out);
+
+
+  return 1;
 }

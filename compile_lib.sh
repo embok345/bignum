@@ -9,7 +9,7 @@ while [ "$1" != "" ]; do
                     ;;
     -s | --shared ) linking="shared"
                     ;;
-    -d | --debug )  compile_opts="$compile_opts -Wall -g3 -Og -fsanitize=address -DBN_LOG_LEVEL=3 -DUSE_LOGGER"
+    -d | --debug )  compile_opts="$compile_opts -Wall -g3 -Og -fsanitize=address -DBN_LOG_LEVEL=LOG_LEVEL_TRACING -DUSE_LOGGER"
                     ;;
     -o | --output ) compile_opts="$compile_opts -O3"
                     ;;

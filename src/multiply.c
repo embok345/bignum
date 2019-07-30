@@ -139,10 +139,10 @@ void bn_mul_karat(const bn_t in1, const bn_t in2, bn_t out) {
   //Store the top len1-m blocks of in1 into up[0], and the bottom m blocks
   //into down[0], and similarly for in2, though in this case there could be no
   //blocks in up[1]
-  bn_bigblocks(in1, len1 - m, up[0]);
-  bn_littleblocks(in1, m, down[0]);
-  bn_bigblocks(in2, bn_max_si(0, (int32_t)len2-m), up[1]);
-  bn_littleblocks(in2, m, down[1]);
+  bn_upperblocks(in1, len1 - m, up[0]);
+  bn_lowerblocks(in1, m, down[0]);
+  bn_upperblocks(in2, bn_max_si(0, (int32_t)len2-m), up[1]);
+  bn_lowerblocks(in2, m, down[1]);
 
   bn_removezeros(down[0]);
   bn_removezeros(down[1]);
@@ -210,4 +210,46 @@ void bn_mul_ub(const bn_t in1, uint8_t in2, bn_t out) {
     bn_addblock(out);
     bn_setBlock(out, len, remainder);
   }
+}
+
+
+/* Shifts the number by the given number of bits. That is multiplies or divides
+ * the number by some power of 2. If `amount' is positive, the number will be
+ * left shifted, i.e. multiplied by a power of 2, and if `amount' is negative
+ * it will be right shifted, i.e. (integer) divided by a power of 2.
+ * ----------------------------------------------------------------------------
+ * bn_t num       -- The number to be bit shifted.
+ * int64_t amount -- The distance to bit shift the number, left if positive,
+ *                   right if negative.
+ *
+ * return         -- 1 if bit shifted successfully, 0 otherwise.
+ */
+int8_t bn_bitshift(bn_t num, int64_t amount) {
+    /* If amount is 0, there is nothing to shift. */
+    if(amount == 0) {
+        return 1;
+    }
+
+    /* Block shift the number by the number of bits divided by 8. */
+    int64_t blocks = amount/8;
+    if(!bn_blockshift(num, blocks)) {
+        /* If we couldn't blockshift, return failure. */
+        return 0;
+    }
+
+    /* The number of bits we then need to shift is the total mod 8. */
+    int16_t bits = amount%8;
+
+    if(amount < 0) {
+        /* If right shifting, half the number the given number of times. */
+        //TODO is there a better way of doing this??
+        for(int16_t i = 0; i>bits; i--) {
+            bn_half(num);
+        }
+    } else {
+        /* If left shifting, multiply by 2**bits. */
+        bn_mul_ub(num, 1<<bits, num);
+    }
+
+    return 1;
 }

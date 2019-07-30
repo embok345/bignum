@@ -47,7 +47,7 @@ int8_t bn_div(const bn_t in1, const bn_t in2,
   bn_inits(2,&quot, &rem);
 
   bn_resize(quot, len1-len2+1);
-  bn_bigblocks(in1, len2, rem);
+  bn_upperblocks(in1, len2, rem);
   bn_removezeros(rem);
 
   c = bn_compare(rem, in2);

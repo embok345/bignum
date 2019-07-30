@@ -6,7 +6,8 @@ void bn_str_add(char *, char *, char *);
 
 /* Converts a bignum into a string. The string can be freed later, in the
  * calling function. This function is probably woefully inefficient.
- * ---------------------------------------------------------------------------
+ * ----------------------------------------------------------------------------
+ * const bn_t num -- The number to convert to a string.
  */
 char *bn_conv_bn2str(const bn_t num) {
 
