@@ -2,32 +2,30 @@
 
 void bn_gcd(const bn_t in1, const bn_t in2, bn_t out) {
   if(bn_iszero(in2)) {
-    bn_clone(out, in1);
+    if(!bn_clone(out, in1)) return;
     return;
   }
   bn_t r;
-  bn_init(&r);
+  if(!bn_init(&r)) return;
   bn_div_rem(in1, in2, r);
   bn_gcd(in2, r, out);
-  bn_nuke(&r);
+  bn_deinit(&r);
 }
 
 void bn_gcd2(const bn_t in1, const bn_t in2, bn_t out) {
 
   if(bn_iszero(in1)) {
-    bn_clone(out, in2);
+    if(!bn_clone(out, in2)) return;
     return;
   }
   if(bn_iszero(in2)) {
-    bn_clone(out, in1);
+    if(!bn_clone(out, in1)) return;
     return;
   }
 
   bn_t u, v;
-  bn_init(&u);
-  bn_init(&v);
-  bn_clone(u, in1);
-  bn_clone(v, in2);
+  if(!bn_inits(2, &u, &v) || !bn_clone(u, in1) || !bn_clone(v, in2))
+      return;
 
   uint32_t shift1 = bn_oddPart(u);
   uint32_t shift2 = bn_oddPart(v);
@@ -37,7 +35,9 @@ void bn_gcd2(const bn_t in1, const bn_t in2, bn_t out) {
     bn_oddPart(v);
 
     if(bn_compare(u, v)>0) {
-      bn_swap(u, v);
+      bn_t temp = u;
+      u = v;
+      v = temp;
     }
 
     bn_sub(v, u, v);
@@ -46,12 +46,12 @@ void bn_gcd2(const bn_t in1, const bn_t in2, bn_t out) {
     bn_removezeros(u);
   } while(!bn_iszero(v));
 
-  bn_nuke(&v);
+  bn_deinit(&v);
 
   bn_bitshift(u, shift);
-  bn_clone(out, u);
+  if(!bn_clone(out, u)) return;
 
-  bn_nuke(&u);
+  bn_deinit(&u);
 }
 
 
@@ -62,14 +62,14 @@ void bn_sqrt(const bn_t in, bn_t out) {
   }
 
   bn_t x, temp;
-  bn_inits(2,&x,&temp);
+  if(!bn_inits(2,&x,&temp)) return;
   uint32_t len = bn_trueLength(in);
 
   if(len%2 != 0) {
-    bn_resize(x, (len-1)>>1);
+    if(!bn_resize(x, (len-1)>>1)) return;
     bn_setBlock(x, bn_length(x)-1, 64);
   } else {
-    bn_resize(x, len>>1);
+    if(!bn_resize(x, len>>1)) return;
     bn_setBlock(x, bn_length(x)-1, 4);
   }
 
@@ -84,7 +84,7 @@ void bn_sqrt(const bn_t in, bn_t out) {
     if(bn_equals(temp, x)) {
       break;
     }
-    bn_clone(x, temp);
+    if(!bn_clone(x, temp)) return;
 
     j++;
     if(j>=2*len) {
@@ -95,9 +95,9 @@ void bn_sqrt(const bn_t in, bn_t out) {
     }
   }
 
-  bn_clone(out, x);
+  if(!bn_clone(out, x)) return;
 
-  bn_nukes(2, &x, &temp);
+  bn_deinits(2, &x, &temp);
 
   bn_removezeros(out);
 }

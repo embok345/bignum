@@ -72,10 +72,8 @@ static void bn_mul_long(const bn_t in1, const bn_t in2, bn_t out) {
   //printf("start long: %"PRId8"\n", bn_getSign(in2));
 
   //Resize the output to the sum of the lengths of the inputs.
-  bn_resize(out, len1+len2);
-
   bn_t mul, add;
-  bn_inits(2, &mul, &add);
+  if(!bn_resize(out, len1+len2) || !bn_inits(2, &mul, &add)) return;
 
   //printf("resize: %"PRId8"\n", bn_getSign(in2));
 
@@ -108,10 +106,10 @@ static void bn_mul_long(const bn_t in1, const bn_t in2, bn_t out) {
     //printf("final multiply end: %"PRId8"\n", bn_getSign(in2));
   } else {
   //Otherwise just copy the working number into out.
-    bn_clone(out, add);
+    if(!bn_clone(out, add)) return;
   }
 
-  bn_nukes(2, &mul, &add);
+  bn_deinits(2, &mul, &add);
 
   //printf("end long: %"PRId8"\n", bn_getSign(in2));
 }
@@ -134,7 +132,8 @@ void bn_mul_karat(const bn_t in1, const bn_t in2, bn_t out) {
   bn_t up[2], down[2];
   bn_t t1, t2;
 
-  bn_inits(9,&z[0],&z[1],&z[2],&up[0],&up[1],&down[0],&down[1],&t1,&t2);
+  if(!bn_inits(9,&z[0],&z[1],&z[2],&up[0],&up[1],&down[0],&down[1],&t1,&t2))
+      return;
 
   //Store the top len1-m blocks of in1 into up[0], and the bottom m blocks
   //into down[0], and similarly for in2, though in this case there could be no
@@ -179,7 +178,7 @@ void bn_mul_karat(const bn_t in1, const bn_t in2, bn_t out) {
 
   //printf("Done shifting\n");
 
-  bn_nukes(9,&up[0],&up[1],&down[0],&down[1],&t1,&t2,&z[0],&z[1],&z[2]);
+  bn_deinits(9,&up[0],&up[1],&down[0],&down[1],&t1,&t2,&z[0],&z[1],&z[2]);
 }
 
 void bn_mul_tc3(const bn_t in1, const bn_t in2, bn_t out) {
@@ -195,7 +194,7 @@ void bn_mul_ub(const bn_t in1, uint8_t in2, bn_t out) {
   }
 
   uint32_t len = bn_length(in1);
-  bn_resize(out, len);
+  if(!bn_resize(out, len)) return;
   uint16_t temp;
   uint8_t remainder = 0;
   //Go through the blocks multiplying each by the byte.

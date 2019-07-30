@@ -50,15 +50,9 @@ int8_t bn_resize(bn_t, uint32_t) __attribute__((warn_unused_result));
 void bn_free(bn_t);
 void bn_deinit(bn_t*);
 void bn_deinits(int,...);
-void bn_destroy(bn_t) __attribute__((deprecated("Use bn_free instead")));
-void bn_nuke(bn_t*) __attribute__((deprecated("Use bn_deinit instead")));
-void bn_nukes(int, ...) __attribute__((deprecated("Use bn_deinits instead")));
 
 int8_t bn_clone(bn_t, const bn_t) __attribute__((warn_unused_result));
 int8_t bn_setzero(bn_t);
-
-void bn_swap(bn_t, bn_t)__attribute__((deprecated("Swap in place: bn_t t = a;"\
-                                                  "a = b; b = temp;")));
 
 int8_t bn_rand_blocks(bn_t, uint32_t);
 int8_t bn_rand(bn_t, const bn_t);
@@ -87,8 +81,6 @@ int8_t bn_isnegative(const bn_t);
 void bn_setpositive(bn_t);
 void bn_setnegative(bn_t);
 void bn_togglesign(bn_t);
-
-void bn_set() __attribute__((deprecated));//TODO remove this
 
 /*float.c*/
 void bnf_init(bn_float **);

@@ -42,7 +42,7 @@ int8_t bn_sub_abs(const bn_t in1, const bn_t in2, bn_t out) {
   uint32_t len = bn_trueLength(in1);
   //uint32_t len2 = bn_trueLength(in2);
 
-  bn_resize(out, len);
+  if(!bn_resize(out, len)) return 0;
 
   int8_t remainder = 0;
   int16_t result = 0;

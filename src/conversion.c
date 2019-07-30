@@ -104,7 +104,7 @@ uint32_t bn_conv_bn2ui(const bn_t in) {
 }
 
 void bn_conv_ui2bn(uint32_t in, bn_t out) {
-  bn_resize(out, 4);
+  if(!bn_resize(out, 4)) return;
 
   bn_setBlock(out, 0, in%256);
   bn_setBlock(out, 1, (in>>8)%256);
@@ -115,6 +115,6 @@ void bn_conv_ui2bn(uint32_t in, bn_t out) {
 }
 
 void bn_conv_ub2bn(uint8_t in, bn_t out) {
-  bn_resize(out, 1);
+  if(!bn_resize(out, 1)) return;
   bn_setBlock(out, 0, in);
 }

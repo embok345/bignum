@@ -7,9 +7,10 @@ void bn_powmod_int(const bn_t b, uint32_t e, const bn_t m, bn_t out) {
   }
 
   bn_t base, result;
-  bn_inits(2, &base, &result);
-  bn_clone(base, b);
-  bn_clone(result, BN_ONE);
+  if(!bn_inits(2, &base, &result) || !bn_clone(base, b) ||
+      !bn_clone(result, BN_ONE)) {
+      return;
+  }
 
   //printf("b = %B\nresult = %B\n", base, result);
 
@@ -26,9 +27,9 @@ void bn_powmod_int(const bn_t b, uint32_t e, const bn_t m, bn_t out) {
     //printf("base * base mod m = %B\n", base);
   }
 
-  bn_clone(out, result);
+  if(!bn_clone(out, result)) ;
 
-  bn_nukes(2, &base, &result);
+  bn_deinits(2, &base, &result);
 
 }
 
@@ -49,10 +50,12 @@ void bn_powmod(const bn_t b,
   bnf_invert(m, mod);*/
 
   bn_t base, result, exponent, q, temp;
-  bn_inits(5, &base, &result, &exponent, &q, &temp);
-  bn_clone(base, b);
-  bn_clone(result, BN_ONE);
-  bn_clone(exponent, e);
+
+  if(!bn_inits(5, &base, &result, &exponent, &q, &temp) ||
+      !bn_clone(base, b) || !bn_clone(result, BN_ONE) ||
+      !bn_clone(exponent, e)) {
+      return;
+  }
 
   /*if(bn_compare(base_1, m) > 0) {
     bnf_mul_bn(mod, base_1, quot);
@@ -100,9 +103,9 @@ void bn_powmod(const bn_t b,
   //printf("result2 = %B\n", result_2);
 
   //bn_clone(out, result_1);
-  bn_clone(out, result);
+  if(!bn_clone(out, result)) return;
 
-  bn_nukes(5, &base, &result, &exponent, &q, &temp);
+  bn_deinits(5, &base, &result, &exponent, &q, &temp);
 }
 
 

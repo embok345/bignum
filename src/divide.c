@@ -15,28 +15,24 @@ int8_t bn_div(const bn_t in1, const bn_t in2,
 
   if(c == -1) { //if a<b, return (0, a)
     bn_setzero(q);
-    bn_clone(r, in1);
-    return 1;
+    return bn_clone(r, in1);
   }
   if(c == 0) { //if a==b, return (1, 0)
-    bn_clone(q, BN_ONE);
+    if(!bn_clone(q, BN_ONE)) return 0;
     bn_setzero(r);
     return 1;
   }
 
   if(bn_isnegative(in1)) {
-    //printf("Here\n");
     bn_t n, rTemp;
-    bn_inits(2, &n, &rTemp);
-    bn_clone(n, in1);
+    if(!bn_inits(2, &n, &rTemp)) return 0;
+    if(!bn_clone(n, in1)) return 0;
     bn_setpositive(n);
     bn_div(n, in2, q, rTemp);
-    //printf("%B = %B*%B + %B\n", n, in2, q, rTemp);
     bn_increment(q);
     bn_setnegative(q);
     bn_sub(in2, rTemp, r);
-    //printf("%B = %B*%B + %B\n", in1, in2, q, r);
-    bn_nukes(2, &n, &rTemp);
+    bn_deinits(2, &n, &rTemp);
     return 1;
   }
 
@@ -44,9 +40,9 @@ int8_t bn_div(const bn_t in1, const bn_t in2,
   uint32_t len2 = bn_trueLength(in2);
 
   bn_t quot, rem;
-  bn_inits(2,&quot, &rem);
+  if(!bn_inits(2,&quot, &rem)) return 0;
 
-  bn_resize(quot, len1-len2+1);
+  if(!bn_resize(quot, len1-len2+1)) return 0;
   bn_upperblocks(in1, len2, rem);
   bn_removezeros(rem);
 
@@ -56,7 +52,7 @@ int8_t bn_div(const bn_t in1, const bn_t in2,
     bn_setBlock(quot, len1-len2, 0);
   } else if(c==0) { // if they are equal, the first quotient is 1, with 0 remainder.
     bn_setBlock(quot, len1-len2, 1);
-    bn_clone(rem, BN_ZERO);
+    bn_setzero(rem);
   } else { // otherwise, we divide them
     bn_setBlock(quot, len1-len2, bn_div_close(rem, in2, rem));
   }
@@ -71,17 +67,16 @@ int8_t bn_div(const bn_t in1, const bn_t in2,
       bn_setBlock(quot, len1-len2-i, 0);
     } else if(c==0) { // if the current blocks are equal to b, the quotient is 1, and remainder is 0
       bn_setBlock(quot, len1-len2-i, 1);
-      bn_clone(rem, BN_ZERO);
+      bn_setzero(rem);
     } else {
       //Otherwise, we divide them
       bn_setBlock(quot, len1-len2-i, bn_div_close(rem, in2, rem));
     }
 
   }
-  bn_clone(r, rem);
-  bn_clone(q, quot);
+  if(!bn_clone(r, rem) || !bn_clone(q, quot)) return 0;
 
-  bn_nukes(2, &rem, &quot);
+  bn_deinits(2, &rem, &quot);
 
   return 1;
 }
@@ -95,7 +90,10 @@ uint8_t bn_div_close(const bn_t in1, const bn_t in2, bn_t remainder) {
 
   c = bn_compare(in1, in2);
   if(c==-1) {
-    bn_clone(remainder, in1);
+    if(!bn_clone(remainder, in1)) {
+        errno = ENOMEM;
+        return 0;
+    }
     return 0;
   }
 
@@ -114,7 +112,10 @@ uint8_t bn_div_close(const bn_t in1, const bn_t in2, bn_t remainder) {
   }
 
   bn_t r;
-  bn_init(&r);
+  if(!bn_init(&r)) {
+      errno = ENOMEM;
+      return 0;
+  }
 
   q/=bn_getBlock(in2, len2-1);
   //Compute r = a-qb
@@ -138,22 +139,25 @@ uint8_t bn_div_close(const bn_t in1, const bn_t in2, bn_t remainder) {
     bn_removezeros(r);
     c = bn_compare(r, in2);
   }
-  bn_clone(remainder, r);
-  bn_nuke(&r);
+  if(!bn_clone(remainder, r)) {
+      errno = ENOMEM;
+      q = 0;
+  }
+  bn_deinit(&r);
   return q;
 }
 
 void bn_div_rem(const bn_t in1, const bn_t in2, bn_t remainder) {
   bn_t q;
-  bn_init(&q);
+  if(!bn_init(&q)) return;
   bn_div(in1, in2, q, remainder);
-  bn_nuke(&q);
+  bn_deinit(&q);
 }
 void bn_div_quot(const bn_t in1, const bn_t in2, bn_t quotient) {
   bn_t r;
-  bn_init(&r);
+  if(!bn_init(&r)) return;
   bn_div(in1, in2, quotient, r);
-  bn_nuke(&r);
+  bn_deinit(&r);
 }
 
 void bn_half(bn_t num) {
