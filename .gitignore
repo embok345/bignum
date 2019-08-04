@@ -5,3 +5,4 @@ a.out
 src/a.out
 src/test
 *.log
+*.swp

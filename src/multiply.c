@@ -2,7 +2,7 @@
 
 static void bn_mul_long(const bn_t, const bn_t, bn_t);
 static void bn_mul_karat(const bn_t, const bn_t, bn_t);
-static void bn_mul_tc3(const bn_t, const bn_t, bn_t);
+static int8_t bn_mul_tc3(const bn_t, const bn_t, bn_t);
 
 /* Multiplies the numbers in1 and in2, and stores it in out.
  * This method doesn't actually do any of the multiplying, it simply picks out
@@ -27,7 +27,6 @@ void bn_mul(const bn_t in1, const bn_t in2, bn_t out) {
 
   //If the first is smaller than the second, swap them over and recall
   if(len1<len2) {
-    printf("swapped\n");
     bn_mul(in2, in1, out);
     return;
   }
@@ -120,7 +119,7 @@ static void bn_mul_long(const bn_t in1, const bn_t in2, bn_t out) {
  * should be correct.
  * ---------------------------------------------------------------------------
  */
-void bn_mul_karat(const bn_t in1, const bn_t in2, bn_t out) {
+static void bn_mul_karat(const bn_t in1, const bn_t in2, bn_t out) {
 
   uint32_t len1 = bn_trueLength(in1);
   uint32_t len2 = bn_trueLength(in2);
@@ -181,8 +180,154 @@ void bn_mul_karat(const bn_t in1, const bn_t in2, bn_t out) {
   bn_deinits(9,&up[0],&up[1],&down[0],&down[1],&t1,&t2,&z[0],&z[1],&z[2]);
 }
 
-void bn_mul_tc3(const bn_t in1, const bn_t in2, bn_t out) {
-  bn_mul_karat(in1, in2, out);
+/* Performs Toom-Cook-3 multiplication on the two arguments. This method
+ * should be faster than Karatsuba muliplication on sufficiently large inputs.
+ * ----------------------------------------------------------------------------
+ * const bn_t in1 -- The numbers to be multiplied together.
+ * const bn_t in2 --                 -"-
+ * bn_t out       -- The result of the multiplication.
+ *
+ * return         -- 1 if the mulipication was successful, 0 otherwise.
+ */
+static int8_t bn_mul_tc3(const bn_t in1, const bn_t in2, bn_t out) {
+
+    const int8_t k = 3;
+    const bn_t in[2] = {in1, in2};
+    const size_t len[2] = {bn_length(in[0]), bn_length(in[1])};
+
+    /* Get the block size of the multiplication. in1 must be larger, as this is
+     * ensured by bn_mul. */
+    int32_t block_size = 1 + (len[0] / k);
+
+    int32_t block_sizes[2][3];
+    /* The first two blocks from in1 are of full length, the third is the
+     * remaining length (which must be +ve by definition). */
+    block_sizes[0][0] = block_size;
+    block_sizes[0][1] = block_size;
+    block_sizes[0][2] = len[0] - (2 * block_size);
+
+    if(len[1] <= block_size) {
+        /* If the length of in2 is less than the block size, only the first
+         * block is non-zero. */
+        block_sizes[1][0] = len[1];
+        block_sizes[1][1] = 0;
+        block_sizes[1][2] = 0;
+    } else if(len[1] <= 2 * block_size) {
+        /* If the lenth of in2 is less than twice the block size, only the
+         * first two blocks are non-zero. */
+        block_sizes[1][0] = block_size;
+        block_sizes[1][1] = len[1] - block_size;
+        block_sizes[1][2] = 0;
+    } else {
+        /* Otherwise, all of the blocks are non-zero. */
+        block_sizes[1][0] = block_size;
+        block_sizes[1][1] = block_size;
+        block_sizes[1][2] = len[1] - (2 * block_size);
+    }
+
+    /* Get all of the blocks. */
+    bn_t in_blocks[2][3];
+    for(int i = 0; i < 2; i++) {
+        for(int j = 0; j < 3; j++) {
+            if(!bn_init(&in_blocks[i][j])) return 0;
+            bn_innerblocks(in[i], block_sizes[0][j], j * block_size,
+                in_blocks[i][j]);
+        }
+    }
+
+    /* Generate the points on the polynomial. */
+    bn_t p0, q0, p[5], q[5];
+    if(!bn_inits(2, &p0, &q0)) return 0;
+    for(int i = 1; i < 4; i++) {
+        if(!bn_inits(2, &p[i], &q[i])) return 0;
+    }
+
+    /* p0 = in[0][0] + in[0][2] */
+    bn_add(in_blocks[0][0], in_blocks[0][2], p0);
+    /* p(0) = in[0][0] */
+    p[0] = in_blocks[0][0];
+    /* p(1) = p0 + in[0][1] */
+    bn_add(p0, in_blocks[0][1], p[1]);
+    /* p(-1) = p0 - in[0][1] */
+    bn_sub(p0, in_blocks[0][1], p[2]);
+    /* p(-2) = (p(-1) + in[0][2]) * 2 - in[0][0] */
+    bn_add(p[2], in_blocks[0][2], p[3]);
+    bn_mul_ub(p[3], 2, p[3]);
+    bn_sub(p[3], in_blocks[0][0], p[3]);
+    /* p(inf) = in[0][2] */
+    p[4] = in_blocks[0][2];
+
+    /* q0 = in[1][0] + in[1][2] */
+    bn_add(in_blocks[1][0], in_blocks[1][2], q0);
+    /* q(0) = in[1][0] */
+    q[0] = in_blocks[1][0];
+    /* q(1) = q0 + in[1][1] */
+    bn_add(q0, in_blocks[1][1], q[1]);
+    /* q(-1) = q0 - in[1][1] */
+    bn_sub(q0, in_blocks[1][1], q[2]);
+    /* q(-2) = (q(-1) + in[1][2]) * 2 - in[1][0] */
+    bn_add(q[2], in_blocks[1][2], q[3]);
+    bn_mul_ub(q[3], 2, q[3]);
+    bn_sub(q[3], in_blocks[1][0], q[3]);
+    /* q(inf) = in[1][2] */
+    q[4] = in_blocks[1][2];
+
+    /* Multiply the points. */
+    bn_t r[5];
+    for(int i = 0; i < 5; i++) {
+        if(!bn_init(&r[i])) return 0;
+        bn_mul(p[i], q[i], r[i]);
+    }
+
+    /* Interpolate the points. */
+    bn_t out_blocks[5];
+    out_blocks[0] = r[0];
+    out_blocks[4] = r[4];
+    for(int i = 1; i < 4; i++) {
+        if(!bn_init(&out_blocks[i])) return 0;
+    }
+    /* out[3] = (r(-2) - r(1)) / 3 */
+    bn_sub(r[3], r[1], out_blocks[3]);
+    bn_div_ub(out_blocks[3], 3, out_blocks[3]);
+    /* out[1] = (r(1) - r(-1)) / 2 */
+    bn_sub(r[1], r[2], out_blocks[1]);
+    bn_div_ub(out_blocks[1], 2, out_blocks[1]);
+    /* out[2] = r(-1) - r(0) */
+    bn_sub(r[2], r[0], out_blocks[2]);
+    /* out[3] = ((out[2] - out[3]) / 2) + 2 * r(inf) */
+    bn_sub(out_blocks[2], out_blocks[3], out_blocks[3]);
+    bn_div_ub(out_blocks[3], 2, out_blocks[3]);
+    bn_add(out_blocks[3], r[4], out_blocks[3]);
+    bn_add(out_blocks[3], r[4], out_blocks[3]);
+    /* out[2] = out[2] + out[1] - out[4] */
+    bn_add(out_blocks[2], out_blocks[1], out_blocks[2]);
+    bn_sub(out_blocks[2], out_blocks[4], out_blocks[2]);
+    /* out[1] = out[1] - out[3] */
+    bn_sub(out_blocks[1], out_blocks[3], out_blocks[1]);
+
+    /* Combine the out blocks. */
+    if(!bn_clone(out, out_blocks[4])) return 0;
+
+    for(int i = 0; i < 4; i++) {
+        /* Shift the current output, then add the next block. */
+        bn_blockshift(out, block_size);
+        bn_add(out, out_blocks[3-i], out);
+    }
+    bn_removezeros(out);
+
+    /* Cleanup */
+    bn_deinits(2, &p0, &q0);
+    for(int i = 0; i < 2; i++) {
+        for(int j = 0; j < 3; j++) {
+            bn_deinit(&in_blocks[i][j]);
+        }
+    }
+    for(int i = 1; i < 4; i++)
+        bn_deinits(3, &p[i], &q[i], &out_blocks[i]);
+    for(int i = 0; i < 5; i++)
+        bn_deinit(&r[i]);
+
+    return 1;
 }
 
 /* Multiply the bignum in1 by the byte in2, and store the result in out */

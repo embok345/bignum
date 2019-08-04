@@ -52,7 +52,7 @@ int bn_printf(FILE *stream,
   return len;
 }
 
-int bn_printf_info(const struct printf_info *info, size_t n, int *argtypes, int *sz) {
+int bn_printf_info(const struct printf_info *info, size_t n, int *argtypes) {
   if(n>0)
     argtypes[0] = PA_POINTER;
   return 1;

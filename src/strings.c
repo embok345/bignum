@@ -6,16 +6,16 @@ int8_t is_digit(const char c) {
 }
 
 int8_t isdigit_str(const char* str) {
-  if(strlen(str) == 0) return 0;
-  if(*str == '-') {
-    if(strlen(str) == 1) return 0;
-    str++;
-  }
-  while(*str!='\0') {
-    if(!is_digit(*str)) return 0;
-    str++;
-  }
-  return 1;
+    if(strlen(str) == 0) return 0;
+    if(*str == '-') {
+        if(strlen(str) == 1) return 0;
+        str++;
+    }
+    while(*str!='\0') {
+        if(!is_digit(*str)) return 0;
+        str++;
+    }
+    return 1;
 }
 
 void bn_str_add(char *in1, char *in2, char *out) {
@@ -68,37 +68,31 @@ void bn_str_add(char *in1, char *in2, char *out) {
 }
 
 void bn_str_mul6(char *in, char *out) {
-  int len;
-  uint8_t remainder, temp;
-  char *tempStr;
 
-  len=strlen(in);
-  remainder = 0;
-  tempStr = malloc(len+1);
+    size_t len;
+    uint8_t remainder, temp;
+    char *tempStr;
 
-  for(int i=len-1;i>=0; i--) {
-    temp = ((in[i]-48)*6)+remainder;
-    tempStr[i] = (char)((temp%10)+48);
-    remainder = temp/10;
-  }
+    len = strlen(in);
+    remainder = 0;
+    tempStr = malloc(len+2);
 
-  tempStr[len] = '\0';
+    tempStr[len + 1] = '\0';
 
-  if(remainder!=0) {
-    len++;
-    tempStr = realloc(tempStr, len+1);
-    char outTemp[len];
-    outTemp[0] = (char)(remainder+48);
-    outTemp[1] = '\0';
-    strcat(outTemp, tempStr);
-    strcpy(tempStr, outTemp);
-  }
+    for(int i = len; i >= 1; i--) {
+        temp = ((in[i - 1]-48)*6)+remainder;
+        tempStr[i] = (char)((temp%10)+48);
+        remainder = temp/10;
+    }
 
-  char outTemp[len];
-  strcpy(outTemp, tempStr);
-  strcpy(out, tempStr);
-  out[len] = '\0';
-  free(tempStr);
+    if(remainder!=0) {
+        tempStr[0] = (char)(remainder + 48);
+        strcpy(out, tempStr);
+    } else {
+        strcpy(out, tempStr + 1);
+    }
+
+    free(tempStr);
 }
 
 void bn_str_mul50(char *in, char *out) {

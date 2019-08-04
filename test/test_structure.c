@@ -1,27 +1,22 @@
-#include <stdio.h>
-#include <assert.h>
-#include <unistd.h>
-#include <pthread.h>
-#include "../src/bignum.h"
+#include "bignum.h"
+#include <criterion/criterion.h>
 
-void* test1(void *v) {
-    printf("1\n");
-    assert( 1 == 1 );
-    return NULL;
-}
-void* test2(void *v) {
-    printf("2\n");
-    assert( 1 == 2 );
-    return NULL;
+TestSuite(structure);
+
+Test(structure, init) {
+    bn_t a;
+    cr_assert_eq(bn_init(&a), 1);
+    bn_deinit(&a);
+    cr_assert_null(a);
 }
 
-int main(void) {
-    pthread_t t1, t2;
+Test(structure, innerblocks) {
+    bn_t a, b;
+    cr_assert_eq(bn_inits(2, &a, &b), 1);
+    cr_assert_eq(bn_resize(a, 5), 1);
+    for(int i = 0; i < 5; i++) {
+        bn_setBlock(a, i, i);
+    }
 
-    pthread_create(&t1, NULL, test1, NULL);
-    pthread_create(&t2, NULL, test2, NULL);
-
-    pthread_join(t1, NULL);
-    pthread_join(t2, NULL);
-
+    bn_deinits(2, &a, &b);
 }

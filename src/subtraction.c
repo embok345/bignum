@@ -61,6 +61,5 @@ int8_t bn_sub_abs(const bn_t in1, const bn_t in2, bn_t out) {
   bn_removezeros(out);
   bn_setpositive(out);
 
-
   return 1;
 }

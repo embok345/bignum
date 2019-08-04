@@ -66,6 +66,7 @@ int8_t bn_addblocks(bn_t, uint32_t);
 int8_t bn_blockshift(bn_t, int32_t);
 
 int8_t bn_lowerblocks(const bn_t, uint32_t, bn_t);
+int8_t bn_innerblocks(const bn_t, uint32_t, uint32_t, bn_t);
 int8_t bn_upperblocks(const bn_t, uint32_t, bn_t);
 
 void bn_removezeros(bn_t);
@@ -106,6 +107,7 @@ void bn_div_rem(const bn_t, const bn_t, bn_t);
 void bn_div_quot(const bn_t, const bn_t, bn_t);
 void bn_half(bn_t);
 uint32_t bn_oddPart(bn_t);
+void bn_div_ub(const bn_t, uint8_t, bn_t);
 
 /*comparisons.c*/
 int8_t bn_compare(const bn_t, const bn_t);
@@ -124,7 +126,7 @@ void bn_prnt_blocks(const bn_t);
 void bn_prnt_blocks_hex(const bn_t);
 void bn_prnt_dec(const bn_t);
 int bn_printf(FILE *, const struct printf_info *, const void *const *);
-int bn_printf_info(const struct printf_info *, size_t, int *, int *);
+int bn_printf_info(const struct printf_info *, size_t, int *);
 
 /*conversion.c*/
 void bn_conv_str2bn(const char *, bn_t);

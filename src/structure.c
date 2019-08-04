@@ -34,6 +34,7 @@ const bn_t BN_ONE = &ONE;
 int8_t bn_init(bn_t *num) {
 
     /* Alloc the struct. */
+    errno = 0;
     *num = malloc(sizeof(struct bignum));
     if(!num || errno) {
         /* If we couldn't alloc, return as an error. */
@@ -444,6 +445,42 @@ int8_t bn_lowerblocks(const bn_t num, uint32_t length, bn_t out) {
     return 1;
 }
 
+/* Copy the `length' number of bytes, starting from `index' (little-endian),
+ * into `out'. For example, if `num' were {1,2,3,4}, `length' were 2, and
+ * `index' were 1, then `out' would be {2,3}. If the index is out of range, 0
+ * is copied, and if index + length is out of bounds, it is just returned
+ * up to the end. Note bn_lowerblocks(length) = bn_innerblocks(length, 0),
+ * and bn_upperblocks(length) = bn_innerblocks(length, bn_length(num) - length)
+ * ----------------------------------------------------------------------------
+ * const bn_t num  -- The number whose inner blocks are to be copied.
+ * uint32_t length -- The number of blocks to copy.
+ * uint32_t index  -- The index from which to copy.
+ * bn_t out        -- The number in which the blocks are to be stored.
+ *
+ * return          -- 1 if successful, 0 otherwise.
+ */
+int8_t bn_innerblocks(const bn_t num, uint32_t length, uint32_t index, bn_t out) {
+    /* If the input is 0, or there is nothing we can copy, copy 0 and return */
+    if(bn_iszero(num) || length == 0 || index >= num->noBlocks) {
+        return bn_setzero(out);
+    }
+    /* If index is 0, we are just copying lower blocks. */
+    if(index == 0)
+        return bn_lowerblocks(num, length, out);
+
+    /* If the request length is out of bounds, just copy as many as possible.*/
+    if(length + index >= num->noBlocks) {
+        return bn_upperblocks(num, num->noBlocks - index, out);
+    }
+
+    /* */
+    if(!bn_resize(out, length)) return 0;
+
+    memmove(out->blocks, num->blocks+index, length);
+
+    return 1;
+}
+
 /* Copy the `length' msb of `num' into `out', so that the lsb of the range
  * being copied is the zero block of the output. For example, if `num' were
  * {1,2,3,4}, so 4 is the msb, and `length' were 2, then out would be {3,4}.
@@ -557,7 +594,7 @@ uint32_t bn_trueLength(const bn_t num) {
 uint8_t bn_getBlock(const bn_t num, uint32_t index) {
     if(index>=num->noBlocks) {
         errno = ERANGE;
-        return -1;
+        return 0;
     }
     errno = 0;
     return num->blocks[index];
@@ -625,8 +662,4 @@ void bn_togglesign(bn_t num) {
             num->sign = BN_POSITIVE;
             break;
     }
-}
-
-//TODO remove this, it shouldn't even be necessary
-void bn_set() {
 }

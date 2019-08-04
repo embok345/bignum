@@ -33,7 +33,7 @@ int8_t bn_compare(const bn_t i1, const bn_t i2) {
   if(size1<size2) {
     return -1;
   }
-  if(size2>size1) {
+  if(size1>size2) {
     return 1;
   }
 

@@ -193,3 +193,19 @@ uint32_t bn_oddPart(bn_t num) {
   }
   return no2s;
 }
+
+void bn_div_ub(const bn_t in1, uint8_t in2, bn_t out) {
+    size_t len = bn_length(in1);
+    if(!bn_clone(out, in1)) return;
+
+    uint16_t numerator = 0;
+    uint16_t remainder = 0;
+    uint8_t next_block = 0;
+
+    for(int i = 0; i < len; i++) {
+        numerator = (uint16_t)bn_getBlock(in1, len - i - 1) + remainder;
+        next_block = (numerator / (uint16_t)in2)%256;
+        remainder = (numerator % in2) << 8;
+        bn_setBlock(out, len - i - 1, next_block);
+    }
+}

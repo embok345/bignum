@@ -1,0 +1,173 @@
+#!/bin/bash
+
+# The absolute path in which this script resides, bignum/test
+SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+
+# The default place to find the shared libraries. libcriterion.so should just
+# go to usual lib location, but otherwise try to look for it there.
+bignum_library_default="$SCRIPTPATH/../bin/shared/libbignum.so"
+criterion_library_default="$HOME/lib/libcriterion.so"
+
+# Try to get the correct location for the given library.
+# Arguments -
+#   $1 - The name of the library (required)
+#   $2 - The first place to look for the library (optional)
+function get_library() {
+  # If no arguments are passed, we can't find the library
+  if [ "$1" == "" ]; then
+    return 1
+  fi
+
+  # Check if the library is on the ld path
+  if [ "$(ldconfig -p | grep $1)" == "" ]; then
+    # If the library doesn't exist on path, get the default location
+    lib="$2"
+    if [ ! -f "$lib" ]; then
+      # If the library isn't in the default location, try to find the library
+      # TODO we really shouldn't run find twice, but if we save it, the grep
+      #  doesn't seem to work?
+      lib="$(find / -type f -name "$1.so*" 2> /dev/null | grep -m1 "$1.so*")"
+      if [ "$lib" == "" ]; then
+        # If the shared library doesn't exist, try to get the static library
+        lib="$(find / -type f -name "$1.a*" 2> /dev/null | grep -m1 "$1.a*")"
+        if [ "$lib" == "" ]; then
+          # If the static library doesn't exist either, we can't continue
+          echo "Could not find library \"$1\". Try to specify manually using" \
+              "\"--lib library_path\"."
+          exit 1
+        fi
+      fi
+    fi
+  fi
+  echo $lib
+}
+
+bignum_library=""
+criterion_library=""
+test_suites=()
+test_functions=()
+
+available_test_suites=("structure" "add" "div" "mul")
+test_defined=0
+
+# Process command line arguments
+while [ "$1" != "" ]; do
+  case $1 in
+    # If --lib is passed, set the pertinent library path to that given
+    --lib | -L )
+      shift
+      if [ "$(grep "bignum" <<< $1) != "" ]; then
+        bignum_library=$1
+      elif [ "$(grep "criterion" <<< $1) != "" ]; then
+        criterion_library=$1
+      fi
+      ;;
+    # Add all suites to be tested
+    all | a )
+      test_suites=${available_test_suites[@]}
+      test_defined=1
+      ;;
+    # Add the structure suite to be tested
+    structure | struct )
+      test_suites+=" structure"
+      test_defined=1
+      ;;
+    # Add the add suite to be tested
+    add )
+      test_suites+=" add"
+      test_defined=1
+      ;;
+    # Add the divide suite to be tested
+    divide | div )
+      test_suites+=" div"
+      test_defined=1
+      ;;
+    #Add the multiply suite to be tested
+    multiply | mul )
+      test_suites+=" mul"
+      test_defined=1
+      ;;
+    # Add a function to be tested
+    --function | -f )
+      shift
+      test_functions+=" $1"
+      test_defined=1
+      ;;
+  esac
+  shift
+done
+
+# If the shared libraries were not passed as arguments, try to find them
+if [ "$bignum_library" == "" ]; then
+  bignum_library=$(get_library "libbignum" "$bignum_library_default")
+fi
+if [ "$criterion_library" == "" ]; then
+  criterion_library=$(get_library "libcriterion" "$criterion_library_default")
+fi
+bignum_library=$(dirname "$bignum_library")
+criterion_library=$(dirname "$criterion_library")
+
+# If no tests were defined, test everything
+if [ $test_defined -eq 0 ]; then
+  test_suites=${available_test_suites[@]}
+fi
+
+# Compile the tests
+# TODO make sure the include path for criterion/criterion.h is general
+gcc $SCRIPTPATH/*.c -I/home/poulter/include/ -L$bignum_library -L$criterion_library -lbignum -lcriterion -o $SCRIPTPATH/tests -w
+
+if [ "$?" != "0" ]; then
+  echo "Could not compile tests."
+  exit 1
+fi
+
+# Set the filter for the suites to be tested. The pattern is
+# +(suite_1|...|suite_n)/*
+suite_filter=""
+for suite in ${test_suites[@]}; do
+  if [ "$suite_filter" == "" ]; then
+    suite_filter="+($suite"
+  else
+    suite_filter="$suite_filter|$suite"
+  fi
+done
+if [ "$suite_filter" != "" ]; then
+  suite_filter="$suite_filter)/*"
+fi
+
+# Set the filter for the functions to be tested. The pattern is
+# */+(function_1|...|function_n)
+function_filter=""
+for fun in ${test_functions[@]}; do
+  if [ "$function_filter" == "" ]; then
+    function_filter="*/+($fun"
+  else
+    function_filter="$function_filter|$fun"
+  fi
+done
+if [ "$function_filter" != "" ]; then
+  function_filter="$function_filter)"
+fi
+
+# Set the filter to match the suites and/or the functions
+filter=""
+if [ "$suite_filter" != "" ] && [ "$function_filter" != "" ]; then
+  filter="+($suite_filter|$function_filter)"
+elif [ "$suite_filter" != "" ]; then
+  filter=$suite_filter
+else
+  filter=$function_filter
+fi
+
+# Make sure extglob is on
+shopt -s extglob
+
+# Set the library path for running
+export LD_LIBRARY_PATH="$bignum_library:$criterion_library:$LD_LIBRARY_PATH"
+
+# Run the tests
+$SCRIPTPATH/./tests --filter $filter
+
+rm $SCRIPTPATH/tests
+
+exit 0
