@@ -514,6 +514,133 @@ int8_t bn_upperblocks(const bn_t num, uint32_t length, bn_t out) {
     return 1;
 }
 
+/* Splits the given bignum in to a sequence of bignums, such that each of the
+ * new bignums has length equal to `subnum_length', except the final one which
+ * may be shorter. The blocks of the first bignum are the lowest
+ * `subnum_length' blocks of the input, the blocks of the second the next
+ * lowest blocks, and so on, til the final bignum, whose blocks are the highest
+ * blocks of the input. If the number of blocks in the input is not a multiple
+ * of `subnum_length', the final bignum will have in.noBlocks % `subnum_length'
+ * blocks instead.
+ * ----------------------------------------------------------------------------
+ * const bn_t in        -- The bignum to be split up.
+ * size_t subnum_length -- The length of the bignums to be split into.
+ * bn_t **outs          -- A pointer to an array of bignums where the outputs
+ *                         are stored. This, and the contained bignums, will
+ *                         be allocated within the function, so need to be
+ *                         freed later.
+ *
+ * return               -- The number of bignums the input was split up into,
+ *                         i.e. the size of the array `outs'. Returns 0 if the
+ *                         number could not be split up.
+ */
+size_t bn_split_length(const bn_t in, size_t subnum_length, bn_t **outs) {
+    /* If the input is empty, or the out blocks want to be of size zero, or the
+     * output is NULL, then we can't split it. */
+    if(bn_isempty(in) || subnum_length == 0 || outs == NULL) return 0;
+
+    /* The number of bignums is just the size of the input over the required
+     * length, plus one if the remainder is non-zero. */
+    uint8_t remainder = (in->noBlocks % subnum_length == 0) ? 0 : 1;
+    size_t subnum_count = (in->noBlocks / subnum_length) + remainder;
+
+    /* Alloc the array of bignums. */
+    *outs = malloc(subnum_count * sizeof(bn_t));
+    for(size_t i = 0; i < subnum_count - remainder; i++) {
+        if(!bn_init(&((*outs)[i]))) return 0;
+
+        /* Set the size of the next bignum, then copy the next blocks from the
+         * input. */
+        bn_t next_bn = (*outs)[i];
+        next_bn->noBlocks = subnum_length;
+        if(!(next_bn->blocks = malloc(subnum_length))) return 0;
+        memcpy(next_bn->blocks, in->blocks + (i * subnum_length),
+            subnum_length);
+    }
+
+    if(remainder) {
+        /* If the remainder is non-zero, the final output has that many blocks
+         * instead. */
+        if(!bn_init(&((*outs)[subnum_count - 1]))) return 0;
+
+        bn_t next_bn = (*outs)[subnum_count - 1];
+        size_t next_bn_len = in->noBlocks % subnum_length;
+        next_bn->noBlocks = next_bn_len;
+        if(!(next_bn->blocks = malloc(next_bn_len))) return 0;
+        memcpy(next_bn->blocks,
+            in->blocks + ((subnum_count - 1) * subnum_length), next_bn_len);
+    }
+
+    /* Return the number of bignums that the input was split into. */
+    return subnum_count;
+}
+
+/* Splits the given bignum in to a sequence of `subnum_count' bignums, all of
+ * which have the same length, except the final one, which may be shorter. The
+ * blocks of the first bignum are the lowest blocks of the input, the blocks of
+ * the second the next lowest blocks, and so on, til the final bignum, whose
+ * blocks are the highest blocks of the input. If the number of blocks in the
+ * input is not a multiple of `subnum_count', the final bignum will have fewer
+ * blocks than the rest.
+ * ----------------------------------------------------------------------------
+ * const bn_t in        -- The bignum to be split up.
+ * size_t subnum_length -- The number of bignums to be split into. i.e. the
+ *                         length of the array `*outs'.
+ * bn_t **outs          -- A pointer to an array of bignums where the outputs
+ *                         are stored. This, and the contained bignums, will
+ *                         be allocated within the function, so need to be
+ *                         freed later. As we know the length of the array
+ *                         beforehand in this case, we could alloc before, but
+ *                         this way the type signatures of split_length and
+ *                         split_count match.
+ *
+ * return               -- The length of the bignums the input was split up
+ *                         into. Returns 0 if the number could not be split up.
+ */
+size_t bn_split_count(const bn_t in, size_t subnum_count, bn_t **outs) {
+    /* If the input is empty, or we want 0 new numbers, or the output is NULL,
+     * then we can't split it. */
+    if(bn_isempty(in) || subnum_count == 0 || outs == NULL) return 0;
+
+    /* Get the length of the numbers. */
+    size_t subnum_length = in->noBlocks / subnum_count;
+    size_t final_length;
+    if(in->noBlocks % subnum_count != 0) {
+        /* If there are some remaining blocks, add one to each block size,
+         * except the highest number, which gets the left over. */
+        subnum_length++;
+        final_length = subnum_length + (in->noBlocks % subnum_count) -
+            (subnum_count - 1);
+    } else {
+        /* Otherwise, the final number has the same size as the rest. */
+        final_length = subnum_length;
+    }
+
+    /* Alloc the output. */
+    *outs = malloc(subnum_count * sizeof(bn_t));
+    for(size_t i = 0; i < subnum_count - 1; i++) {
+        if(!bn_init(&((*outs)[i]))) return 0;
+
+        /* Set the size of the next bignum, then copy the next blocks from the
+         * input. */
+        bn_t next_bn = (*outs)[i];
+        next_bn->noBlocks = subnum_length;
+        if(!(next_bn->blocks = malloc(subnum_length))) return 0;
+        memcpy(next_bn->blocks, in->blocks + (i * subnum_length),
+            subnum_length);
+    }
+
+    /* Copy the final number, which may have a different number of blocks. */
+    if(!bn_init(&((*outs)[subnum_count - 1]))) return 0;
+    bn_t final_bn = (*outs)[subnum_count - 1];
+    if(!(final_bn->blocks = malloc(final_length))) return 0;
+    memcpy(final_bn->blocks, in->blocks + ((subnum_count - 1) * subnum_length),
+        final_length);
+
+    /* Return the length of (most of) the numbers. */
+    return subnum_length;
+}
+
 /* Remove the leading zeros from the number. If the number has no non-zero
  * blocks, the final one is not removed (i.e. the length becomes 1, rather than
  * 0). This simply updates the length of the number, and doesn't realloc to

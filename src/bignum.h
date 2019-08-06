@@ -68,6 +68,8 @@ int8_t bn_blockshift(bn_t, int32_t);
 int8_t bn_lowerblocks(const bn_t, uint32_t, bn_t);
 int8_t bn_innerblocks(const bn_t, uint32_t, uint32_t, bn_t);
 int8_t bn_upperblocks(const bn_t, uint32_t, bn_t);
+size_t bn_split_length(const bn_t, size_t, bn_t **);
+size_t bn_split_count(const bn_t, size_t, bn_t **);
 
 void bn_removezeros(bn_t);
 uint32_t bn_leadingZeros(const bn_t);
