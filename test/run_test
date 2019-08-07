@@ -47,7 +47,7 @@ criterion_library=""
 test_suites=()
 test_functions=()
 
-available_test_suites=("structure" "add" "div" "mul")
+available_test_suites=("structure" "add" "div" "mul" "strings" "conversion")
 test_defined=0
 
 # Process command line arguments
@@ -85,6 +85,16 @@ while [ "$1" != "" ]; do
     #Add the multiply suite to be tested
     multiply | mul )
       test_suites+=" mul"
+      test_defined=1
+      ;;
+    #Add the string suite to be tested
+    string | str | strings )
+      test_suites+=" strings"
+      test_defined=1
+      ;;
+    # Add conversion suite to be tested
+    conversion | conv )
+      test_suites+=" conversion"
       test_defined=1
       ;;
     # Add a function to be tested

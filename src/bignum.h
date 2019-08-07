@@ -131,7 +131,7 @@ int bn_printf(FILE *, const struct printf_info *, const void *const *);
 int bn_printf_info(const struct printf_info *, size_t, int *);
 
 /*conversion.c*/
-void bn_conv_str2bn(const char *, bn_t);
+int8_t bn_conv_str2bn(const char *, bn_t);
 void bn_conv_ui2bn(uint32_t, bn_t);
 void bn_conv_ub2bn(uint8_t, bn_t);
 uint32_t bn_conv_bn2ui(const bn_t);

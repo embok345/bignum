@@ -1,120 +1,136 @@
 #include "bignum.h"
 
 int8_t isdigit_str(const char *);
-void bn_str_mul256(char *, char *);
-void bn_str_add(char *, char *, char *);
+char *bn_str_mul256(const char *const);
+char *bn_str_add(char *, const char *const);
 
-/* Converts a bignum into a string. The string can be freed later, in the
- * calling function. This function is probably woefully inefficient.
+/* Converts a bignum into a decimal string.
  * ----------------------------------------------------------------------------
  * const bn_t num -- The number to convert to a string.
+ *
+ * return         -- A decimal string representation of the bignum, which may
+ *                   be freed later.
  */
 char *bn_conv_bn2str(const bn_t num) {
 
-  char *out, *x, *temp, *workStr = (char *)malloc(3);
-  workStr[0]='\0';
-  //If the bignum is empty, return an empty string. (is this best?)
-  if(bn_isempty(num)) return workStr;
+    /* If the number is zero, just return "0" */
+    if(bn_iszero(num)) return strdup("0");
 
-  uint32_t numBlocks = bn_trueLength(num);
-  for(uint32_t i = numBlocks-1; i>0; i--) {
-    //Convert the current block to a string
-    //An 8 bit number takes at most 3 digits
-    x = (char*)malloc(4);
-    sprintf(x,"%"PRIu8, bn_getBlock(num, i));
-    x[3]='\0';
-    //Add new block to the end of the string
-    temp = (char *)malloc(strlen(workStr)+1);
-    strcpy(temp, workStr);
-    workStr = (char *)realloc(workStr, strlen(workStr)+strlen(x)+2);
-    bn_str_add(temp, x, workStr);
-    free(temp);
-    free(x);
+    char *out = strdup("0"), *next_block = malloc(4);
+    uint32_t numBlocks = bn_trueLength(num);
 
-    //Multiply string by 256
-    temp = (char *)malloc(strlen(workStr)+4);
-    bn_str_mul256(workStr, temp);
-    workStr = (char *)realloc(workStr, strlen(workStr)+4);
-    strcpy(workStr, temp);
-    free(temp);
+    /* Oterate throught each block of the number. */
+    for(uint32_t i = numBlocks-1; i>0; i--) {
+        /* Convert the current block to a string. */
+        snprintf(next_block, 4, "%"PRIu8, bn_getBlock(num, i));
 
-  }
+        /* Add new block to the end of the string. */
+        out = bn_str_add(out, next_block);
 
-  //Add the final block to the string
-  x = (char*)malloc(4);
-  sprintf(x,"%"PRIu8,bn_getBlock(num, 0));
-  temp = (char *)malloc(strlen(workStr)+1);
-  strcpy(temp, workStr);
-  workStr = (char *)realloc(workStr, strlen(workStr)+strlen(x)+2);
-  bn_str_add(temp, x, workStr);
-  free(x);
-  free(temp);
-
-  out = (char *)malloc(strlen(workStr)+1);
-  strcpy(out, workStr);
-  free(workStr);
-
-  //If the number is negative, add a minus sign to the front
-  if(bn_isnegative(num)) {
-    char temp2[strlen(out)+1];
-    temp2[0] = '-';
-    temp2[1] = '\0';
-    strcat(temp2, out);
-    out = realloc(out, strlen(out)+2);
-    strcpy(out, temp2);
-  }
-
-  return out;
-}
-
-void bn_conv_str2bn(const char* str, bn_t num) {
-  uint32_t len = strlen(str);
-
-  bn_setzero(num);
-
-  if(!isdigit_str(str)) {
-    //TODO return something better than this.
-    return;
-  }
-
-  for(uint32_t i=0; i<len-1; i++) {
-    if(str[i] == '-') {
-      bn_setnegative(num);
-      continue;
+        /* Multiply the string by 256. */
+        char *temp = bn_str_mul256(out);
+        free(out);
+        out = temp;
     }
-    //Add the next digit to num
-    bn_add_ub(num, str[i]-48, num);
-    //Multiply out by 10
-    bn_mul_ub(num, 10, num);
-    //bn_prnt_blocks(num);
-  }
-  //bn_prnt_blocks(num);
-  //printf("%"PRIu8"\n", str[len-1]-48);
-  bn_add_ub(num, str[len-1]-48, num);
-  //bn_prnt_blocks(num);
+
+    /* Add the final block to the string. */
+    snprintf(next_block, 4, "%"PRIu8, bn_getBlock(num, 0));
+    out = bn_str_add(out, next_block);
+
+    /* If the number is negative, add a minus sign to the front. */
+    if(bn_isnegative(num)) {
+        size_t len = strlen(out);
+        out = realloc(out, len + 2);
+        memmove(out + 1, out, len + 1);
+        out[0] = '-';
+    }
+
+    free(next_block);
+
+    return out;
 }
 
+/* Converts the given string into a bignum. The string must be a decimal string
+ * possibly with a leading '+' or '-'.
+ * TODO: it may be nice to allow other bases, using "0x...", "0o..." or "0b..."
+ * ----------------------------------------------------------------------------
+ * const char *str -- The string to convert into a bignum.
+ * bn_t num        -- The bignum into which the string is stored.
+ *
+ * return          -- 1 if the conversion was successful, 0 otherwise.
+ */
+int8_t bn_conv_str2bn(const char* str, bn_t num) {
+
+    /* If the string is not a digit string, we can't convert. */
+    if(!isdigit_str(str)) return 0;
+
+    size_t len = strlen(str);
+
+    size_t i = 0;
+    /* If the first character is '+', increment the index. */
+    if(str[0] == '+') i++;
+    if(str[0] == '-') {
+        /* If the first character is '-', set the number to be negative. */
+        bn_setnegative(num);
+        i++;
+    } else {
+        /* Otherwise make sure the number is positive. */
+        bn_setpositive(num);
+    }
+
+    /* Set the number to be most significant digit of the string. */
+    bn_conv_ub2bn(str[i++] - '0', num);
+
+    for(; i < len; i++) {
+        /* Multiply the number by 10, then add the next digit. */
+        bn_mul_ub(num, 10, num);
+        bn_add_ub(num, str[i] - '0', num);
+    }
+
+    return 1;
+}
+
+/* Converts a bignum into an unsigned integer. It takes just the lowest four
+ * blocks from the bignum and ignores the rest, and also ignores the sign of
+ * the bignum.
+ * ----------------------------------------------------------------------------
+ * const bn_t in -- The bignum to convert to an unsigned integer.
+ *
+ * return        -- The lowest four blocks of the bignum, interpretted as an
+ *                  integer.
+ */
 uint32_t bn_conv_bn2ui(const bn_t in) {
-  uint32_t out = 0;
-  for(int i=0; i<bn_min_ui(4,bn_length(in)); i++) {
-    out>>=8;
-    out+=bn_getBlock(in, i);
-  }
-  return out;
+    uint32_t out = 0;
+    for(int i = 3; i >= 0; i--) {
+        /* Multiply the output by 256, then add the next lower block. */
+        out <<= 8;
+        out += bn_getBlock(in, i);
+    }
+    return out;
 }
 
+/* Converts an unsigned integer into a bignum.
+ * ----------------------------------------------------------------------------
+ * uint32_t in -- The integer to convert into a bignum.
+ * bn_yt out   -- The bignum into which the integer is stored.
+ */
 void bn_conv_ui2bn(uint32_t in, bn_t out) {
-  if(!bn_resize(out, 4)) return;
+    if(!bn_resize(out, 4)) return;
 
-  bn_setBlock(out, 0, in%256);
-  bn_setBlock(out, 1, (in>>8)%256);
-  bn_setBlock(out, 2, (in>>16)%256);
-  bn_setBlock(out, 3, (in>>24)%256);
+    bn_setBlock(out, 0, in%256);
+    bn_setBlock(out, 1, (in>>8)%256);
+    bn_setBlock(out, 2, (in>>16)%256);
+    bn_setBlock(out, 3, (in>>24)%256);
 
-  bn_removezeros(out);
+    bn_removezeros(out);
 }
 
+/* Convert an unsigned byte into a bignum.
+ * ----------------------------------------------------------------------------
+ * uint8_t in -- The byte to converted into a bignum.
+ * bn_t out   -- The bignum into which the byte is stored.
+ */
 void bn_conv_ub2bn(uint8_t in, bn_t out) {
-  if(!bn_resize(out, 1)) return;
-  bn_setBlock(out, 0, in);
+    if(!bn_resize(out, 1)) return;
+    bn_setBlock(out, 0, in);
 }
