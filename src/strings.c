@@ -6,7 +6,7 @@
  *
  * return -- 1 if the character is a digit, 0 if not.
  */
-inline int8_t is_digit(char c) {
+int8_t is_digit(char c) {
     return c >= '0' && c <= '9';
 }
 
