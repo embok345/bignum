@@ -16,7 +16,7 @@ The compiled library will be located at bin/{static|shared}/libbignum.{a|so}.
 
 Windows - Lul idk, figure it out yourself. Jk, I'll try to add this at some point.
 
-##Usage
+## Usage
 
 Include bignum.h, found in the root directory.
 Link with -lbignum, making sure that libbignum.{a|so} is in your library path.
